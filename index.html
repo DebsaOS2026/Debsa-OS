@@ -96,7 +96,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
     </div>
     <div>
       <h1 class="text-sm sm:text-base font-bold tracking-[0.08em] uppercase gold-text" data-i18n="nav_title">Debsa Built Environment®</h1>
-      <p class="text-[10px] tracking-[0.22em] uppercase mono" style="color:rgba(201,168,124,.65)" data-i18n="nav_sub">Unified Executive System — Professional LLC</p>
+      <p class="text-[10px] tracking-[0.22em] uppercase mono" style="color:rgba(201,168,124,.65)"><span data-i18n="nav_sub">Unified Executive System — Professional LLC</span> <span style="color:var(--gold)">· V3.3</span></p>
     </div>
   </div>
   <div class="flex items-center gap-2.5">
@@ -792,6 +792,23 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* ===== On-screen error reporter (diagnostic) ===== */
+window.onerror = function(msg, srcUrl, line, col){
+  try{
+    var b = document.getElementById('js-error-banner');
+    if(!b){
+      b = document.createElement('div');
+      b.id = 'js-error-banner';
+      b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#7f1d1d;color:#fff;font:bold 12px monospace;padding:10px 14px;direction:ltr;text-align:left;white-space:pre-wrap';
+      document.body.appendChild(b);
+    }
+    b.textContent = '⚠ JS ERROR: ' + msg + '  @line ' + line + ':' + col;
+  }catch(e){}
+};
+window.addEventListener('unhandledrejection', function(ev){
+  window.onerror('Promise: ' + (ev.reason && ev.reason.message || ev.reason), '', 0, 0);
+});
+
 /* ============================================================
    DEBSA BUILT ENVIRONMENT® — Unified Executive System Engine
    Identity: Debsa Pass, Elev. 5,360 m — Great Himalayan Range
@@ -857,8 +874,8 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
 })();
 
 /* ---------- 1. Core state & localStorage ---------- */
-const DB_KEY = 'debsa_summit_db_v3';
-let dbState = JSON.parse(localStorage.getItem(DB_KEY)) || {
+const DB_KEY = 'debsa_summit_db_v4';
+const DEFAULT_STATE = {
   passcodes: { ceo:"ceo123", accountant:"acc123", technical:"tech123", bizdev:"bd123" },
   finances: { cash: 18450000, pending: 4200000 },
   attendance: [
@@ -950,6 +967,22 @@ let dbState = JSON.parse(localStorage.getItem(DB_KEY)) || {
     { id:"ds_1", ownerType:"role", ownerId:"bizdev", ownerName:"Business Development / تطوير الأعمال", timestamp:"2026-07-03 15:30", text:"Completed morning Etimad checks and filed 2 pre-qualifications." }
   ]
 };
+function isValidState(s){
+  return s && typeof s === 'object' && s.passcodes && Array.isArray(s.employees) && Array.isArray(s.documents);
+}
+function normalizeState(s){
+  /* Patch any missing sections (upgrades from older schema versions) */
+  Object.keys(DEFAULT_STATE).forEach(k => { if(s[k] === undefined) s[k] = JSON.parse(JSON.stringify(DEFAULT_STATE[k])); });
+  return s;
+}
+let dbState;
+try{
+  const cached = JSON.parse(localStorage.getItem(DB_KEY));
+  dbState = isValidState(cached) ? normalizeState(cached) : JSON.parse(JSON.stringify(DEFAULT_STATE));
+}catch(e){
+  dbState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+
 /* ---------- Supabase cloud sync ---------- */
 const SUPABASE_URL = 'https://qasqrnaxfjleettefbhd.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhc3FybmF4ZmpsZWV0dGVmYmhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzMjcwODgsImV4cCI6MjA5ODkwMzA4OH0.Uk2P4D4Dl9niukLFb_DImrD4pvMwsBNdKlzmKAlngEc';
@@ -976,13 +1009,12 @@ async function pushToCloud(){
   }catch(e){ setSyncBadge(false); }
 }
 async function loadFromCloud(){
-  if(!sbClient){ setSyncBadge(false); return; }
+  if(!sbClient){ setSyncBadge(false, 'Supabase library not loaded (CDN blocked?)'); return; }
   try{
     const { data, error } = await sbClient.from('debsa_state').select('data').eq('id', 1).maybeSingle();
-    if(error){ setSyncBadge(false); return; }
-    const valid = d => d && d.passcodes && Array.isArray(d.employees) && Array.isArray(d.documents);
-    if(data && valid(data.data)){
-      dbState = data.data;
+    if(error){ setSyncBadge(false, error.message); return; }
+    if(data && isValidState(data.data)){
+      dbState = normalizeState(data.data);
       localStorage.setItem(DB_KEY, JSON.stringify(dbState));
       try{ renderLanguageStrings(); renderAllDataTables(); }catch(e){ console.warn('render after cloud load:', e); }
     } else {
@@ -998,19 +1030,26 @@ function subscribeRealtime(){
   sbClient.channel('debsa-live')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'debsa_state' }, payload => {
       const incoming = payload.new && payload.new.data;
-      if(!incoming || !incoming.passcodes || !Array.isArray(incoming.employees)) return;
+      if(!isValidState(incoming)) return;
       const s = JSON.stringify(incoming);
       if(s === lastPushedJson || s === JSON.stringify(dbState)) return; /* ignore own writes */
-      dbState = incoming;
-      localStorage.setItem(DB_KEY, s);
+      dbState = normalizeState(incoming);
+      localStorage.setItem(DB_KEY, JSON.stringify(dbState));
       renderLanguageStrings(); renderAllDataTables();
     }).subscribe();
 }
-function setSyncBadge(ok){
+let lastSyncError = "";
+function setSyncBadge(ok, reason){
+  if(reason) lastSyncError = reason;
   const b = document.getElementById('sync-badge');
   if(!b) return;
   b.innerHTML = ok ? '<i class="fa-solid fa-cloud"></i> Supabase' : '<i class="fa-solid fa-cloud-slash"></i> Local';
   b.style.color = ok ? '#7cbf9e' : '#e06c6c';
+  b.style.cursor = 'pointer';
+  b.onclick = () => {
+    showToast(ok ? 'Supabase ✓' : 'Local mode', ok ? 'Cloud sync active.' : (lastSyncError || 'Tap = retry...'));
+    if(!ok) loadFromCloud();
+  };
 }
 
 let currentRole = null;
@@ -1489,7 +1528,7 @@ function proceedToDashboard(){
   document.getElementById('checkin-btn').classList.toggle('hidden', currentRole === 'technical');
   if(currentRole === 'ceo') document.getElementById('ops-date-input').value = todayISO();
   showToast(_t('toast_auth_t'), _t('toast_auth_d'));
-  renderAllDataTables();
+  try{ renderAllDataTables(); }catch(e){ window.onerror('render: ' + e.message, '', 0, 0); }
   window.scrollTo({top:0, behavior:'smooth'});
 }
 function exitDashboard(){
