@@ -777,7 +777,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
 </div>
 
 <!-- Toast -->
-<div id="toastNotification" class="fixed bottom-16 start-6 max-w-sm w-full glass-panel p-4 rounded-2xl shadow-2xl flex items-start gap-3 transform translate-y-24 opacity-0 transition-all duration-500 z-50" style="border-inline-start:3px solid var(--gold)">
+<div id="toastNotification" class="fixed bottom-16 start-6 max-w-sm w-full glass-panel p-4 rounded-2xl shadow-2xl flex items-start gap-3 transform translate-y-24 opacity-0 transition-all duration-500 z-50 pointer-events-none" style="border-inline-start:3px solid var(--gold)">
   <i class="fa-solid fa-mountain text-lg mt-0.5" style="color:var(--gold)"></i>
   <div>
     <h4 class="text-xs font-bold text-white" id="toastTitle">Notification</h4>
@@ -980,13 +980,14 @@ async function loadFromCloud(){
   try{
     const { data, error } = await sbClient.from('debsa_state').select('data').eq('id', 1).maybeSingle();
     if(error){ setSyncBadge(false); return; }
-    if(data && data.data){
+    const valid = d => d && d.passcodes && Array.isArray(d.employees) && Array.isArray(d.documents);
+    if(data && valid(data.data)){
       dbState = data.data;
       localStorage.setItem(DB_KEY, JSON.stringify(dbState));
-      renderLanguageStrings(); renderAllDataTables();
+      try{ renderLanguageStrings(); renderAllDataTables(); }catch(e){ console.warn('render after cloud load:', e); }
     } else {
-      /* First run: seed the cloud with the demo state */
-      await sbClient.from('debsa_state').insert({ id: 1, data: dbState });
+      /* First run OR corrupt/empty cloud row: (re)seed with the current healthy state */
+      await sbClient.from('debsa_state').upsert({ id: 1, data: dbState, updated_at: new Date().toISOString() });
     }
     setSyncBadge(true);
     subscribeRealtime();
@@ -997,7 +998,7 @@ function subscribeRealtime(){
   sbClient.channel('debsa-live')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'debsa_state' }, payload => {
       const incoming = payload.new && payload.new.data;
-      if(!incoming) return;
+      if(!incoming || !incoming.passcodes || !Array.isArray(incoming.employees)) return;
       const s = JSON.stringify(incoming);
       if(s === lastPushedJson || s === JSON.stringify(dbState)) return; /* ignore own writes */
       dbState = incoming;
@@ -1462,6 +1463,7 @@ function selectRoleGate(role){
 }
 
 function verifyRoleAccess(){
+  if(!dbState || !dbState.passcodes){ showToast("⚠", "State recovering... try again in a second."); loadFromCloud(); return; }
   const entered = document.getElementById('role-passcode-input').value;
   if(entered === dbState.passcodes[currentRole]) proceedToDashboard();
   else document.getElementById('auth-error-msg').classList.remove('hidden');
