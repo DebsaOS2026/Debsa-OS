@@ -96,7 +96,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
     </div>
     <div>
       <h1 class="text-sm sm:text-base font-bold tracking-[0.08em] uppercase gold-text" data-i18n="nav_title">Debsa Built Environment®</h1>
-      <p class="text-[10px] tracking-[0.22em] uppercase mono" style="color:rgba(201,168,124,.65)"><span data-i18n="nav_sub">Unified Executive System — Professional LLC</span> <span style="color:var(--gold)">· V3.3</span></p>
+      <p class="text-[10px] tracking-[0.22em] uppercase mono" style="color:rgba(201,168,124,.65)"><span data-i18n="nav_sub">Unified Executive System — Professional LLC</span> <span style="color:var(--gold)">· V3.4</span></p>
     </div>
   </div>
   <div class="flex items-center gap-2.5">
@@ -358,6 +358,24 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
           <tbody id="ceo-complaints-table-body" class="divide-y divide-white/5 text-slate-300"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- Office geofence settings -->
+    <div class="glass-panel p-5 rounded-2xl space-y-4" style="border-inline-start:3px solid var(--steel)">
+      <h3 class="text-base font-bold text-white border-b pb-2 flex items-center gap-2" style="border-color:var(--line)">
+        <i class="fa-solid fa-location-crosshairs" style="color:var(--steel)"></i><span data-i18n="geo_title">Attendance geofence (office location)</span>
+      </h3>
+      <p class="text-[11px]" style="color:#8fa0b2" data-i18n="geo_sub">When enabled, check-in is only accepted within the allowed radius of the office. Stand at the office and press capture.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs items-end">
+        <button onclick="captureOfficeLocation()" class="font-bold py-2 rounded-lg text-slate-950 hover:brightness-110" style="background:var(--steel)" data-i18n="geo_capture_btn">📍 Capture current location as office</button>
+        <div><label class="block mb-1" style="color:#8fa0b2" data-i18n="geo_radius_lbl">Allowed radius (meters)</label>
+          <input type="number" id="geo-radius-input" min="50" max="2000" onchange="updateGeoRadius()" class="w-full bg-slate-950/70 border border-white/10 rounded-lg p-2 text-white mono"></div>
+        <label class="flex items-center gap-2 cursor-pointer pb-2">
+          <input type="checkbox" id="geo-enforce-toggle" onchange="toggleGeoEnforce()" class="rounded bg-slate-900 border-white/10 w-4 h-4">
+          <span class="font-bold text-white" data-i18n="geo_enforce_lbl">Require office location for check-in</span>
+        </label>
+      </div>
+      <p id="geo-status-line" class="text-[11px] mono" style="color:#8fa0b2"></p>
     </div>
 
     <!-- Routine playbook builder -->
@@ -878,6 +896,7 @@ const DB_KEY = 'debsa_summit_db_v4';
 const DEFAULT_STATE = {
   passcodes: { ceo:"ceo123", accountant:"acc123", technical:"tech123", bizdev:"bd123" },
   finances: { cash: 18450000, pending: 4200000 },
+  geo: { enforce:false, lat:null, lng:null, radiusM:200, label:"" },
   attendance: [
     { user:"Technical Dept (TECHNICAL)", date:"2026-07-03", time:"08:14 AM", status:"Verified Attendance / حضور معتمد" }
   ],
@@ -1173,6 +1192,20 @@ en: {
   status_pending:"pending", status_completed:"completed",
   greet_morning:"Good morning", greet_afternoon:"Good afternoon", greet_evening:"Good evening",
   vac_balance:"Vacation balance:", days_unit:"days",
+  geo_title:"Attendance geofence (office location)",
+  geo_sub:"When enabled, check-in is only accepted within the allowed radius of the office. Stand at the office and press capture.",
+  geo_capture_btn:"📍 Capture current location as office", geo_radius_lbl:"Allowed radius (m)",
+  geo_enforce_lbl:"Require office location for check-in",
+  geo_not_set:"Office location not set yet.", geo_saved_at:"Office saved at",
+  geo_active:"ENFORCED", geo_inactive:"not enforced",
+  geo_no_support:"This browser does not support geolocation.",
+  geo_locating:"Locating... allow location access if asked.",
+  geo_saved_t:"Office location saved", geo_saved_d:"Check-ins will be measured against this point.",
+  geo_perm_err:"Could not get your location", geo_set_first:"Capture the office location first.",
+  geo_now_on:"Geofence check-in is now ENFORCED.", geo_now_off:"Geofence check-in disabled.",
+  geo_denied_t:"Check-in denied 🚫", geo_denied_d:"You are outside the office radius",
+  geo_checkin_ok_d:"Verified at the office location.",
+  th_att_loc:"Location",
   routine_ceo_managed_hint:"Routine steps agreed with the CEO. Press Done after each step:",
   ceo_routines_title:"Daily routine playbooks (agreed SOP per person)",
   ceo_routines_sub:"Define the ordered daily steps for each person. They will see them every morning after check-in and press Done per step.",
@@ -1348,6 +1381,20 @@ ar: {
   status_pending:"معلقة", status_completed:"مكتملة",
   greet_morning:"صباح الخير", greet_afternoon:"مساء الخير", greet_evening:"مساء الخير",
   vac_balance:"رصيد الإجازات:", days_unit:"يوماً",
+  geo_title:"النطاق الجغرافي للحضور (موقع المكتب)",
+  geo_sub:"عند التفعيل، لا يُقبل تسجيل الحضور إلا داخل النطاق المسموح حول المكتب. قف في المكتب واضغط التقاط.",
+  geo_capture_btn:"📍 التقاط موقعي الحالي كموقع المكتب", geo_radius_lbl:"النطاق المسموح (متر)",
+  geo_enforce_lbl:"اشتراط موقع المكتب لتسجيل الحضور",
+  geo_not_set:"موقع المكتب لم يُحدد بعد.", geo_saved_at:"المكتب محفوظ عند",
+  geo_active:"مُفعّل إلزامياً", geo_inactive:"غير مُفعّل",
+  geo_no_support:"هذا المتصفح لا يدعم تحديد الموقع.",
+  geo_locating:"جاري تحديد الموقع... اسمح بالوصول للموقع إذا طُلب.",
+  geo_saved_t:"تم حفظ موقع المكتب", geo_saved_d:"سيتم قياس كل تسجيل حضور من هذه النقطة.",
+  geo_perm_err:"تعذر تحديد موقعك", geo_set_first:"التقط موقع المكتب أولاً.",
+  geo_now_on:"أصبح الحضور مشروطاً بالتواجد في المكتب.", geo_now_off:"تم إلغاء اشتراط الموقع.",
+  geo_denied_t:"رُفض تسجيل الحضور 🚫", geo_denied_d:"أنت خارج نطاق المكتب",
+  geo_checkin_ok_d:"تم التحقق من تواجدك في موقع المكتب.",
+  th_att_loc:"الموقع",
   routine_ceo_managed_hint:"خطواتك الروتينية المتفق عليها مع المدير التنفيذي. اضغط تم بعد كل خطوة:",
   ceo_routines_title:"أدلة المهام الروتينية اليومية (SOP متفق عليه لكل شخص)",
   ceo_routines_sub:"حدد الخطوات اليومية المرتبة لكل شخص. ستظهر له كل صباح بعد تسجيل الحضور ويضغط (تم) عند كل خطوة.",
@@ -1539,6 +1586,36 @@ function exitDashboard(){
 }
 
 /* ---------- 5. Check-in (08:00–16:00, once per day) ---------- */
+function haversineM(lat1, lng1, lat2, lng2){
+  const R = 6371000, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(a)));
+}
+function captureOfficeLocation(){
+  if(!navigator.geolocation){ showToast("!", _t('geo_no_support')); return; }
+  showToast("📡", _t('geo_locating'));
+  navigator.geolocation.getCurrentPosition(pos => {
+    dbState.geo.lat = pos.coords.latitude;
+    dbState.geo.lng = pos.coords.longitude;
+    saveToStorage(); renderAllDataTables();
+    showToast(_t('geo_saved_t'), _t('geo_saved_d'));
+  }, err => showToast("!", _t('geo_perm_err') + ' (' + err.message + ')'), { enableHighAccuracy:true, timeout:15000 });
+}
+function updateGeoRadius(){
+  const v = parseInt(document.getElementById('geo-radius-input').value) || 200;
+  dbState.geo.radiusM = Math.min(2000, Math.max(50, v));
+  saveToStorage(); renderAllDataTables();
+}
+function toggleGeoEnforce(){
+  if(!dbState.geo.lat && document.getElementById('geo-enforce-toggle').checked){
+    document.getElementById('geo-enforce-toggle').checked = false;
+    showToast("!", _t('geo_set_first')); return;
+  }
+  dbState.geo.enforce = document.getElementById('geo-enforce-toggle').checked;
+  saveToStorage(); renderAllDataTables();
+  showToast("📍", dbState.geo.enforce ? _t('geo_now_on') : _t('geo_now_off'));
+}
 function triggerCheckIn(){
   const now = new Date(), h = now.getHours();
   if(h < 8 || h >= 16){ showToast(_t('toast_checkin_window_t'), _t('toast_checkin_window_d')); return; }
@@ -1549,10 +1626,33 @@ function triggerCheckIn(){
   if(dbState.attendance.some(a => a.user.includes(identityName) && a.date === todayStr)){
     showToast(_t('toast_checkin_dup_t'), _t('toast_checkin_dup_d')); return;
   }
+  /* Geofence path: verify position BEFORE recording */
+  if(dbState.geo.enforce && dbState.geo.lat){
+    if(!navigator.geolocation){ showToast("!", _t('geo_no_support')); return; }
+    showToast("📡", _t('geo_locating'));
+    navigator.geolocation.getCurrentPosition(pos => {
+      const distM = haversineM(pos.coords.latitude, pos.coords.longitude, dbState.geo.lat, dbState.geo.lng);
+      if(distM > dbState.geo.radiusM){
+        showToast(_t('geo_denied_t'), _t('geo_denied_d') + ` (${distM}m)`);
+        return;
+      }
+      commitCheckIn(identityName, todayStr, now, {
+        lat:+pos.coords.latitude.toFixed(6), lng:+pos.coords.longitude.toFixed(6),
+        distM, radiusM: dbState.geo.radiusM, acc: Math.round(pos.coords.accuracy)
+      });
+    }, err => showToast(_t('geo_denied_t'), _t('geo_perm_err') + ' (' + err.message + ')'),
+    { enableHighAccuracy:true, timeout:15000, maximumAge:0 });
+    return;
+  }
+  commitCheckIn(identityName, todayStr, now, null);
+}
+function commitCheckIn(identityName, todayStr, now, loc){
   const timeStr = now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:true});
-  dbState.attendance.unshift({ user:`${identityName} (${currentRole.toUpperCase()})`, date:todayStr, time:timeStr, status:_t('att_status_verified') });
+  const rec = { user:`${identityName} (${currentRole.toUpperCase()})`, date:todayStr, time:timeStr, status:_t('att_status_verified') };
+  if(loc) rec.loc = loc;
+  dbState.attendance.unshift(rec);
   saveToStorage(); renderAllDataTables();
-  showToast(_t('toast_checkin_ok_t'), _t('toast_checkin_ok_d'));
+  showToast(_t('toast_checkin_ok_t'), loc ? _t('geo_checkin_ok_d') + ` (📍 ${loc.distM}m)` : _t('toast_checkin_ok_d'));
 }
 
 /* ---------- 6. Documents & early warning ---------- */
@@ -1941,13 +2041,30 @@ function renderAllDataTables(){
   ceoEmpSelect.innerHTML = dbState.employees.map(e => `<option value="${e.id}">${esc(e.name)} (${esc(e.role)})</option>`).join('');
 
   /* Attendance */
-  document.getElementById('ceo-attendance-table-body-main').innerHTML = dbState.attendance.map(a => `
-    <tr>
+  document.getElementById('ceo-attendance-table-body-main').innerHTML = dbState.attendance.map(a => {
+    let locHtml = `<span style="color:#4a5d72">—</span>`;
+    if(a.loc){
+      const inRange = a.loc.distM <= (a.loc.radiusM || 99999);
+      locHtml = `<a href="https://maps.google.com/?q=${a.loc.lat},${a.loc.lng}" target="_blank" class="mono px-2 py-0.5 rounded hover:brightness-125" style="${inRange ? 'background:rgba(124,191,158,.12);color:var(--sage)' : 'background:rgba(224,108,108,.12);color:#e06c6c'}">📍 ${a.loc.distM}m</a>`;
+    }
+    return `<tr>
       <td class="p-2 font-bold">${esc(a.user)}</td>
       <td class="p-2">${esc(a.date)}</td>
       <td class="p-2 mono" style="color:var(--gold-bright)">${esc(a.time)}</td>
       <td class="p-2"><span class="px-2 py-0.5 rounded" style="background:rgba(124,191,158,.12);color:var(--sage)">${esc(a.status)}</span></td>
-    </tr>`).join('');
+      <td class="p-2">${locHtml}</td>
+    </tr>`;
+  }).join('');
+
+  /* Geofence settings UI */
+  const geoRadius = document.getElementById('geo-radius-input');
+  if(geoRadius && document.activeElement !== geoRadius) geoRadius.value = dbState.geo.radiusM;
+  const geoToggle = document.getElementById('geo-enforce-toggle');
+  if(geoToggle) geoToggle.checked = dbState.geo.enforce;
+  const geoStatus = document.getElementById('geo-status-line');
+  if(geoStatus) geoStatus.innerHTML = dbState.geo.lat
+    ? `✅ ${_t('geo_saved_at')} <a href="https://maps.google.com/?q=${dbState.geo.lat},${dbState.geo.lng}" target="_blank" style="color:var(--steel)">${dbState.geo.lat.toFixed(5)}, ${dbState.geo.lng.toFixed(5)}</a> · ${_t('geo_radius_lbl')}: ${dbState.geo.radiusM}m ${dbState.geo.enforce ? '· <b style="color:var(--sage)">' + _t('geo_active') + '</b>' : '· <b style="color:#8fa0b2">' + _t('geo_inactive') + '</b>'}`
+    : `⚪ ${_t('geo_not_set')}`;
 
   /* CEO leave approvals */
   const ceoLeavesBody = document.getElementById('ceo-leave-requests-table-body');
