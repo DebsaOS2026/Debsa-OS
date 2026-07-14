@@ -96,7 +96,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
     </div>
     <div>
       <h1 class="text-sm sm:text-base font-bold tracking-[0.08em] uppercase gold-text" data-i18n="nav_title">Debsa Built Environment®</h1>
-      <p class="text-[10px] tracking-[0.22em] uppercase mono" style="color:rgba(201,168,124,.65)"><span data-i18n="nav_sub">Unified Executive System — Professional LLC</span> <span style="color:var(--gold)">· V3.4</span></p>
+      <p class="text-[10px] tracking-[0.22em] uppercase mono" style="color:rgba(201,168,124,.65)"><span data-i18n="nav_sub">Unified Executive System — Professional LLC</span> <span style="color:var(--gold)">· V4.1</span></p>
     </div>
   </div>
   <div class="flex items-center gap-2.5">
@@ -165,7 +165,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
     <div id="standard-gate-inputs" class="space-y-3">
       <div class="flex gap-2">
         <input type="password" id="role-passcode-input" class="w-full bg-slate-950/80 border border-white/10 rounded-xl px-4 py-2.5 text-center mono tracking-[0.35em] text-white focus:outline-none focus:border-[#c9a87c]" placeholder="••••">
-        <button onclick="verifyRoleAccess()" class="font-bold px-5 rounded-xl transition-all text-slate-950" style="background:linear-gradient(120deg,var(--gold),var(--gold-bright))" data-i18n="btn_login_submit">Ascend</button>
+        <button id="gate-submit-btn" onclick="verifyRoleAccess()" class="font-bold px-5 rounded-xl transition-all text-slate-950" style="background:linear-gradient(120deg,var(--gold),var(--gold-bright))" data-i18n="btn_login_submit">Ascend</button>
       </div>
     </div>
     <div id="employee-gate-inputs" class="space-y-3 hidden">
@@ -177,7 +177,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
         <label class="block text-xs mb-1" style="color:#8fa0b2" data-i18n="lbl_emp_pass">Password</label>
         <input type="password" id="employee-password-input" class="w-full bg-slate-950/80 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-[#c9a87c]" placeholder="••••••••">
       </div>
-      <button onclick="verifyEmployeeAccess()" class="w-full py-2.5 font-bold rounded-xl transition-all text-slate-950" style="background:linear-gradient(120deg,var(--sand),#efe3c4)" data-i18n="btn_emp_login_submit">Enter employee portal</button>
+      <button id="employee-submit-btn" onclick="verifyEmployeeAccess()" class="w-full py-2.5 font-bold rounded-xl transition-all text-slate-950" style="background:linear-gradient(120deg,var(--sand),#efe3c4)" data-i18n="btn_emp_login_submit">Enter employee portal</button>
     </div>
     <p id="auth-error-msg" class="text-xs text-red-400 text-center mt-3 hidden"><i class="fa-solid fa-triangle-exclamation me-1"></i><span data-i18n="auth_error_msg">The entered credentials are incorrect.</span></p>
   </div>
@@ -195,6 +195,9 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
     <div class="flex items-center gap-2">
       <button id="checkin-btn" onclick="triggerCheckIn()" class="text-slate-950 font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-2 hover:brightness-110" style="background:linear-gradient(120deg,var(--gold),var(--gold-bright))">
         <i class="fa-solid fa-fingerprint text-sm"></i><span data-i18n="lbl_checkin">Submit today's check-in</span>
+      </button>
+      <button id="change-pwd-btn" onclick="openChangePwdModal()" class="bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition-all border border-white/10 hidden">
+        <i class="fa-solid fa-key me-1"></i><span data-i18n="lbl_change_pwd">Change password</span>
       </button>
       <button onclick="exitDashboard()" class="bg-white/5 hover:bg-red-500/10 text-slate-300 hover:text-red-400 text-xs font-bold px-4 py-2 rounded-xl transition-all border border-white/10">
         <i class="fa-solid fa-arrow-right-from-bracket me-1 rtl-flip"></i><span data-i18n="lbl_logout">Switch gate</span>
@@ -266,6 +269,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
             <div><label class="block mb-1" style="color:#8fa0b2" data-i18n="ceo_emp_bal_lbl">Vacation balance</label>
               <input type="number" id="ceo-new-emp-balance" value="30" class="w-full bg-slate-950/70 border border-white/10 rounded-lg p-2 text-white mono"></div>
           </div>
+          <p class="text-[10px] rounded-lg p-2" style="background:rgba(126,168,201,.08);color:var(--steel);border:1px solid rgba(126,168,201,.2)" data-i18n="auth_emp_note">Employee auth note</p>
           <button onclick="createNewEmployeeAccount()" class="w-full py-2 font-bold rounded-lg transition-all text-slate-950 hover:brightness-110" style="background:linear-gradient(120deg,var(--gold),var(--gold-bright))" data-i18n="btn_create_emp">Create & deploy employee portal</button>
         </div>
       </div>
@@ -291,6 +295,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
         <h3 class="text-base font-bold text-white border-b pb-2 flex items-center gap-2" style="border-color:var(--line)">
           <i class="fa-solid fa-shield-halved" style="color:var(--gold)"></i><span data-i18n="ceo_sec_title">Central passcode governance</span>
         </h3>
+        <p class="text-[10px] rounded-lg p-2" style="background:rgba(201,168,124,.08);color:var(--gold-bright);border:1px solid rgba(201,168,124,.2)" data-i18n="auth_cloud_note">Cloud security note</p>
         <div class="space-y-3 text-sm">
           <div class="grid grid-cols-2 gap-2 items-center"><label class="text-xs text-slate-300" data-i18n="lbl_pwd_ceo">CEO gate passcode:</label>
             <input type="text" id="pwd-input-ceo" class="bg-slate-950/70 border border-white/10 rounded-lg p-1.5 text-xs text-center mono text-white"></div>
@@ -775,6 +780,25 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
   </div>
 </div>
 
+<div id="modal-change-pwd" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+  <div class="glass-panel p-6 rounded-2xl w-full max-w-sm space-y-4" style="border:1px solid rgba(201,168,124,.25)">
+    <h3 class="text-base font-bold text-white flex items-center gap-2 border-b pb-2" style="border-color:var(--line)">
+      <i class="fa-solid fa-key" style="color:var(--gold)"></i><span data-i18n="pwd_modal_title">Change my password</span>
+    </h3>
+    <div class="text-xs space-y-3">
+      <div><label class="block mb-1" style="color:#8fa0b2" data-i18n="pwd_new_lbl">New password (6+ characters)</label>
+        <input type="password" id="pwd-new-input" class="w-full bg-slate-950/70 border border-white/10 rounded-lg p-2.5 text-white"></div>
+      <div><label class="block mb-1" style="color:#8fa0b2" data-i18n="pwd_confirm_lbl">Confirm new password</label>
+        <input type="password" id="pwd-confirm-input" class="w-full bg-slate-950/70 border border-white/10 rounded-lg p-2.5 text-white"></div>
+      <p id="pwd-modal-err" class="text-red-400 text-[11px] hidden"></p>
+    </div>
+    <div class="flex gap-2 pt-1">
+      <button id="pwd-save-btn" onclick="submitPasswordChange()" class="flex-1 font-bold py-2.5 rounded-lg text-slate-950 hover:brightness-110 text-xs" style="background:linear-gradient(120deg,var(--gold),var(--gold-bright))" data-i18n="pwd_save_btn">Update password</button>
+      <button onclick="document.getElementById('modal-change-pwd').classList.add('hidden')" class="px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs font-bold" data-i18n="btn_cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-new-vendor" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
   <div class="glass-panel max-w-sm w-full p-6 rounded-2xl space-y-4">
     <h3 class="text-sm font-bold text-white border-b pb-2" style="border-color:var(--line)" data-i18n="m_vendor_title">Verify vendor status</h3>
@@ -805,7 +829,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
 
 <footer class="glass-panel py-3 px-6 text-[10px] mono border-t flex flex-wrap items-center justify-between gap-2 relative z-10" style="border-color:var(--line);color:#6b7d90">
   <p>© 2026 Debsa Built Environment® — Debsa Engineering Consultancy, Professional LLC.</p>
-  <p class="flex items-center gap-1.5" style="color:rgba(201,168,124,.55)"><i class="fa-solid fa-mountain text-xs"></i> Resilience at 5,360 m — LocalStorage Secure Workspace</p>
+  <p class="flex items-center gap-1.5" style="color:rgba(201,168,124,.55)"><i class="fa-solid fa-mountain text-xs"></i> Resilience at 5,360 m — Supabase Auth Secured Workspace</p>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1021,6 +1045,8 @@ function scheduleCloudSave(){
 async function pushToCloud(){
   if(!sbClient) return;
   try{
+    const { data: { session } } = await sbClient.auth.getSession();
+    if(!session) return;
     lastPushedJson = JSON.stringify(dbState);
     const { error } = await sbClient.from('debsa_state')
       .upsert({ id: 1, data: dbState, updated_at: new Date().toISOString() });
@@ -1030,6 +1056,8 @@ async function pushToCloud(){
 async function loadFromCloud(){
   if(!sbClient){ setSyncBadge(false, 'Supabase library not loaded (CDN blocked?)'); return; }
   try{
+    const { data: { session } } = await sbClient.auth.getSession();
+    if(!session){ setSyncBadge(false, _t('auth_needed_hint')); return; }
     const { data, error } = await sbClient.from('debsa_state').select('data').eq('id', 1).maybeSingle();
     if(error){ setSyncBadge(false, error.message); return; }
     if(data && isValidState(data.data)){
@@ -1044,7 +1072,10 @@ async function loadFromCloud(){
     subscribeRealtime();
   }catch(e){ setSyncBadge(false); }
 }
+let __rtSubscribed = false;
 function subscribeRealtime(){
+  if(__rtSubscribed) return;
+  __rtSubscribed = true;
   /* Live sync: any change from another device/portal re-renders instantly */
   sbClient.channel('debsa-live')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'debsa_state' }, payload => {
@@ -1192,6 +1223,16 @@ en: {
   status_pending:"pending", status_completed:"completed",
   greet_morning:"Good morning", greet_afternoon:"Good afternoon", greet_evening:"Good evening",
   vac_balance:"Vacation balance:", days_unit:"days",
+  auth_confirm_hint:"Account not confirmed. In Supabase: Authentication -> Users -> tick Auto Confirm.",
+  auth_emp_missing:"Authenticated, but no matching employee profile found. Ask the CEO to create it.",
+  auth_needed_hint:"Sign in through a gate to activate cloud sync.",
+  auth_cloud_note:"\ud83d\udd10 Cloud security is ON: real passwords are managed from Supabase Dashboard -> Authentication -> Users. The codes below apply to local demo mode only.",
+  auth_emp_note:"\ud83d\udd10 Note: also create a matching login account in Supabase (Authentication -> Users -> username@debsa-os.sa) so the employee can sign in.",
+  lbl_change_pwd:"Change password", pwd_modal_title:"Change my password",
+  pwd_new_lbl:"New password (6+ characters)", pwd_confirm_lbl:"Confirm new password",
+  pwd_save_btn:"Update password", btn_cancel:"Cancel",
+  pwd_err_short:"Password must be at least 6 characters.", pwd_err_mismatch:"The two passwords do not match.",
+  pwd_ok_t:"Password updated", pwd_ok_d:"Use the new password from your next sign-in.",
   geo_title:"Attendance geofence (office location)",
   geo_sub:"When enabled, check-in is only accepted within the allowed radius of the office. Stand at the office and press capture.",
   geo_capture_btn:"📍 Capture current location as office", geo_radius_lbl:"Allowed radius (m)",
@@ -1381,6 +1422,16 @@ ar: {
   status_pending:"معلقة", status_completed:"مكتملة",
   greet_morning:"صباح الخير", greet_afternoon:"مساء الخير", greet_evening:"مساء الخير",
   vac_balance:"رصيد الإجازات:", days_unit:"يوماً",
+  auth_confirm_hint:"الحساب غير مؤكد. في Supabase: Authentication ← Users ← فعّل Auto Confirm.",
+  auth_emp_missing:"تم التحقق من الدخول لكن لا يوجد ملف موظف مطابق في النظام. اطلب من المدير التنفيذي إنشاءه.",
+  auth_needed_hint:"سجل الدخول من إحدى البوابات لتفعيل المزامنة السحابية.",
+  auth_cloud_note:"\ud83d\udd10 الحماية السحابية مفعلة: كلمات المرور الحقيقية تُدار من لوحة Supabase ← Authentication ← Users. الرموز أدناه للوضع المحلي التجريبي فقط.",
+  auth_emp_note:"\ud83d\udd10 تنبيه: أنشئ أيضاً حساب دخول مطابق في Supabase (Authentication ← Users ← username@debsa-os.sa) حتى يستطيع الموظف الدخول.",
+  lbl_change_pwd:"تغيير كلمة المرور", pwd_modal_title:"تغيير كلمة مروري",
+  pwd_new_lbl:"كلمة المرور الجديدة (6+ أحرف)", pwd_confirm_lbl:"تأكيد كلمة المرور الجديدة",
+  pwd_save_btn:"تحديث كلمة المرور", btn_cancel:"إلغاء",
+  pwd_err_short:"كلمة المرور يجب أن تكون 6 أحرف على الأقل.", pwd_err_mismatch:"كلمتا المرور غير متطابقتين.",
+  pwd_ok_t:"تم تحديث كلمة المرور", pwd_ok_d:"استخدم الكلمة الجديدة من دخولك القادم.",
   geo_title:"النطاق الجغرافي للحضور (موقع المكتب)",
   geo_sub:"عند التفعيل، لا يُقبل تسجيل الحضور إلا داخل النطاق المسموح حول المكتب. قف في المكتب واضغط التقاط.",
   geo_capture_btn:"📍 التقاط موقعي الحالي كموقع المكتب", geo_radius_lbl:"النطاق المسموح (متر)",
@@ -1548,18 +1599,75 @@ function selectRoleGate(role){
   document.getElementById('password-gate-box').scrollIntoView({behavior:'smooth', block:'center'});
 }
 
-function verifyRoleAccess(){
-  if(!dbState || !dbState.passcodes){ showToast("⚠", "State recovering... try again in a second."); loadFromCloud(); return; }
-  const entered = document.getElementById('role-passcode-input').value;
-  if(entered === dbState.passcodes[currentRole]) proceedToDashboard();
-  else document.getElementById('auth-error-msg').classList.remove('hidden');
+/* ===== Supabase Auth: real security layer =====
+   Each gate/role and each employee has a real auth account.
+   Emails follow the pattern below; passwords are managed from
+   Supabase Dashboard -> Authentication -> Users. */
+const AUTH_EMAIL_DOMAIN = 'debsa-os.sa';
+const ROLE_EMAILS = {
+  ceo:        'ceo@'        + AUTH_EMAIL_DOMAIN,
+  accountant: 'accountant@' + AUTH_EMAIL_DOMAIN,
+  technical:  'technical@'  + AUTH_EMAIL_DOMAIN,
+  bizdev:     'bizdev@'     + AUTH_EMAIL_DOMAIN
+};
+function setGateBusy(busy){
+  ['gate-submit-btn','employee-submit-btn'].forEach(id => {
+    const b = document.getElementById(id);
+    if(b){ b.disabled = busy; b.style.opacity = busy ? '.55' : '1'; }
+  });
 }
-function verifyEmployeeAccess(){
+function showAuthError(msg){
+  const el = document.getElementById('auth-error-msg');
+  el.classList.remove('hidden');
+  const span = el.querySelector('span');
+  if(span) span.innerText = msg || _t('auth_error_msg');
+}
+async function verifyRoleAccess(){
+  const entered = document.getElementById('role-passcode-input').value;
+  if(!entered) return;
+  if(sbClient){
+    setGateBusy(true);
+    try{
+      const { error } = await sbClient.auth.signInWithPassword({ email: ROLE_EMAILS[currentRole], password: entered });
+      if(error){
+        setGateBusy(false);
+        showAuthError(/confirm/i.test(error.message) ? _t('auth_confirm_hint') : _t('auth_error_msg'));
+        return;
+      }
+      await loadFromCloud();
+      setGateBusy(false);
+      proceedToDashboard();
+    }catch(e){ setGateBusy(false); showAuthError('Network: ' + e.message); }
+    return;
+  }
+  if(dbState && dbState.passcodes && entered === dbState.passcodes[currentRole]) proceedToDashboard();
+  else showAuthError();
+}
+async function verifyEmployeeAccess(){
   const u = document.getElementById('employee-username-input').value.trim().toLowerCase();
   const p = document.getElementById('employee-password-input').value;
+  if(!u || !p) return;
+  if(sbClient){
+    setGateBusy(true);
+    try{
+      const { error } = await sbClient.auth.signInWithPassword({ email: u + '@' + AUTH_EMAIL_DOMAIN, password: p });
+      if(error){
+        setGateBusy(false);
+        showAuthError(/confirm/i.test(error.message) ? _t('auth_confirm_hint') : _t('auth_error_msg'));
+        return;
+      }
+      await loadFromCloud();
+      const matched = dbState.employees.find(e => e.username.toLowerCase() === u);
+      setGateBusy(false);
+      if(!matched){ showAuthError(_t('auth_emp_missing')); await sbClient.auth.signOut(); return; }
+      activeEmployeeId = matched.id;
+      proceedToDashboard();
+    }catch(e){ setGateBusy(false); showAuthError('Network: ' + e.message); }
+    return;
+  }
   const matched = dbState.employees.find(e => e.username.toLowerCase() === u && e.password === p);
   if(matched){ activeEmployeeId = matched.id; proceedToDashboard(); }
-  else document.getElementById('auth-error-msg').classList.remove('hidden');
+  else showAuthError();
 }
 
 function proceedToDashboard(){
@@ -1573,16 +1681,46 @@ function proceedToDashboard(){
   document.getElementById(map[currentRole]).classList.remove('hidden');
   /* Check-in is for CEO, Accountant, BizDev & Employees — NOT the Technical dept */
   document.getElementById('checkin-btn').classList.toggle('hidden', currentRole === 'technical');
+  /* Change-password works only with real cloud auth */
+  (async () => {
+    let hasSession = false;
+    if(sbClient){ const { data:{ session } } = await sbClient.auth.getSession(); hasSession = !!session; }
+    document.getElementById('change-pwd-btn').classList.toggle('hidden', !hasSession);
+  })();
   if(currentRole === 'ceo') document.getElementById('ops-date-input').value = todayISO();
   showToast(_t('toast_auth_t'), _t('toast_auth_d'));
   try{ renderAllDataTables(); }catch(e){ window.onerror('render: ' + e.message, '', 0, 0); }
   window.scrollTo({top:0, behavior:'smooth'});
+}
+function openChangePwdModal(){
+  document.getElementById('pwd-new-input').value = "";
+  document.getElementById('pwd-confirm-input').value = "";
+  document.getElementById('pwd-modal-err').classList.add('hidden');
+  document.getElementById('modal-change-pwd').classList.remove('hidden');
+}
+async function submitPasswordChange(){
+  const p1 = document.getElementById('pwd-new-input').value;
+  const p2 = document.getElementById('pwd-confirm-input').value;
+  const err = document.getElementById('pwd-modal-err');
+  const show = m => { err.innerText = m; err.classList.remove('hidden'); };
+  if(p1.length < 6){ show(_t('pwd_err_short')); return; }
+  if(p1 !== p2){ show(_t('pwd_err_mismatch')); return; }
+  const btn = document.getElementById('pwd-save-btn');
+  btn.disabled = true; btn.style.opacity = '.55';
+  try{
+    const { error } = await sbClient.auth.updateUser({ password: p1 });
+    btn.disabled = false; btn.style.opacity = '1';
+    if(error){ show(error.message); return; }
+    document.getElementById('modal-change-pwd').classList.add('hidden');
+    showToast(_t('pwd_ok_t'), _t('pwd_ok_d'));
+  }catch(e){ btn.disabled = false; btn.style.opacity = '1'; show('Network: ' + e.message); }
 }
 function exitDashboard(){
   document.getElementById('dashboard-workspace-section').classList.add('hidden');
   document.getElementById('auth-wall-section').classList.remove('hidden');
   document.getElementById('password-gate-box').classList.add('hidden');
   activeEmployeeId = null; currentRole = null;
+  if(sbClient) sbClient.auth.signOut();
 }
 
 /* ---------- 5. Check-in (08:00–16:00, once per day) ---------- */
