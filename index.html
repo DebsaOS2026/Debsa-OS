@@ -96,7 +96,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
     </div>
     <div>
       <h1 class="text-sm sm:text-base font-bold tracking-[0.08em] uppercase gold-text" data-i18n="nav_title">Debsa Built Environment®</h1>
-      <p class="text-[10px] tracking-[0.22em] uppercase mono" style="color:rgba(201,168,124,.65)"><span data-i18n="nav_sub">Unified Executive System — Professional LLC</span> <span style="color:var(--gold)">· V4.2</span></p>
+      <p class="text-[10px] tracking-[0.22em] uppercase mono" style="color:rgba(201,168,124,.65)"><span data-i18n="nav_sub">Unified Executive System — Professional LLC</span> <span style="color:var(--gold)">· V4.3</span></p>
     </div>
   </div>
   <div class="flex items-center gap-2.5">
@@ -1508,10 +1508,12 @@ ar: {
   toast_sum_ok_t:"تم القيد", toast_sum_ok_d:"سُجّل الملخص اليومي الدائم."
 }
 };
-function _t(key){ return (dictionary[dbState.language] && dictionary[dbState.language][key]) || dictionary.en[key] || key; }
+/* Language is a per-device preference (not shared state). Default: English */
+let uiLang = localStorage.getItem('debsa_lang') || 'en';
+function _t(key){ return (dictionary[uiLang] && dictionary[uiLang][key]) || dictionary.en[key] || key; }
 
 function renderLanguageStrings(){
-  const l = dbState.language;
+  const l = uiLang;
   document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
   document.documentElement.lang = l;
   document.querySelectorAll('[data-i18n]').forEach(el => { el.innerText = _t(el.dataset.i18n); });
@@ -1519,8 +1521,8 @@ function renderLanguageStrings(){
   document.getElementById('lang-btn-label').innerText = l === 'ar' ? "English" : "العربية";
 }
 function toggleLanguage(){
-  dbState.language = dbState.language === 'ar' ? 'en' : 'ar';
-  saveToStorage();
+  uiLang = uiLang === 'ar' ? 'en' : 'ar';
+  localStorage.setItem('debsa_lang', uiLang);
   renderLanguageStrings();
   if(currentRole) renderAllDataTables();
 }
@@ -1536,7 +1538,7 @@ function updateClock(){
   const hs = String(h).padStart(2,'0');
   const el = document.getElementById('global-date-time');
   if(el){
-    el.innerText = dbState.language === 'ar'
+    el.innerText = uiLang === 'ar'
       ? `${d}/${m}/${y} مـ — ${hs}:${min}:${s} ${ampm === 'AM' ? 'صباحاً' : 'مساءً'}`
       : `${d}/${m}/${y} — ${hs}:${min}:${s} ${ampm}`;
   }
@@ -1575,7 +1577,7 @@ function animateNumber(id, target, suffix){
 function getDaysBetween(a, b){ return Math.ceil((b - a) / 86400000); }
 function nowStamp(){
   const n = new Date();
-  return n.toLocaleDateString(dbState.language === 'ar' ? 'ar-SA-u-ca-gregory' : 'en-GB') + ' ' +
+  return n.toLocaleDateString(uiLang === 'ar' ? 'ar-SA-u-ca-gregory' : 'en-GB') + ' ' +
          n.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 }
 function esc(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1824,7 +1826,7 @@ function evaluateDocumentAlerts(){
       trigger = true;
       const li = document.createElement('li');
       const ownerLbl = docOwnerName(doc.ownerId);
-      li.innerHTML = dbState.language === 'ar'
+      li.innerHTML = uiLang === 'ar'
         ? `⚠️ <strong>[${esc(ownerLbl)}]</strong> المستند <strong>(${esc(doc.name)})</strong> ينتهي خلال <span class="font-bold" style="color:#f2c14e">${remaining} يوم</span> بتاريخ (${doc.expiry}).`
         : `⚠️ <strong>[${esc(ownerLbl)}]</strong> Document <strong>(${esc(doc.name)})</strong> expires in <span class="font-bold" style="color:#f2c14e">${remaining} days</span> on (${doc.expiry}).`;
       list.appendChild(li);
