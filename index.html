@@ -96,7 +96,7 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
     </div>
     <div>
       <h1 class="text-sm sm:text-base font-bold tracking-[0.08em] uppercase gold-text" data-i18n="nav_title">Debsa Built Environment®</h1>
-      <p class="text-[10px] tracking-[0.22em] uppercase mono" style="color:rgba(201,168,124,.65)"><span data-i18n="nav_sub">Unified Executive System — Professional LLC</span> <span style="color:var(--gold)">· V4.1</span></p>
+      <p class="text-[10px] tracking-[0.22em] uppercase mono" style="color:rgba(201,168,124,.65)"><span data-i18n="nav_sub">Unified Executive System — Professional LLC</span> <span style="color:var(--gold)">· V4.2</span></p>
     </div>
   </div>
   <div class="flex items-center gap-2.5">
@@ -786,6 +786,8 @@ html[dir="rtl"] .rtl-flip{transform:scaleX(-1)}
       <i class="fa-solid fa-key" style="color:var(--gold)"></i><span data-i18n="pwd_modal_title">Change my password</span>
     </h3>
     <div class="text-xs space-y-3">
+      <div><label class="block mb-1" style="color:#8fa0b2" data-i18n="pwd_target_lbl">Select the account</label>
+        <select id="pwd-target-select" class="w-full bg-slate-950/70 border border-white/10 rounded-lg p-2.5 text-white"></select></div>
       <div><label class="block mb-1" style="color:#8fa0b2" data-i18n="pwd_new_lbl">New password (6+ characters)</label>
         <input type="password" id="pwd-new-input" class="w-full bg-slate-950/70 border border-white/10 rounded-lg p-2.5 text-white"></div>
       <div><label class="block mb-1" style="color:#8fa0b2" data-i18n="pwd_confirm_lbl">Confirm new password</label>
@@ -1228,7 +1230,7 @@ en: {
   auth_needed_hint:"Sign in through a gate to activate cloud sync.",
   auth_cloud_note:"\ud83d\udd10 Cloud security is ON: real passwords are managed from Supabase Dashboard -> Authentication -> Users. The codes below apply to local demo mode only.",
   auth_emp_note:"\ud83d\udd10 Note: also create a matching login account in Supabase (Authentication -> Users -> username@debsa-os.sa) so the employee can sign in.",
-  lbl_change_pwd:"Change password", pwd_modal_title:"Change my password",
+  lbl_change_pwd:"Manage passwords", pwd_modal_title:"Password management (CEO only)", pwd_target_lbl:"Select the account", pwd_admin_ok_d:"Password updated for:",
   pwd_new_lbl:"New password (6+ characters)", pwd_confirm_lbl:"Confirm new password",
   pwd_save_btn:"Update password", btn_cancel:"Cancel",
   pwd_err_short:"Password must be at least 6 characters.", pwd_err_mismatch:"The two passwords do not match.",
@@ -1427,7 +1429,7 @@ ar: {
   auth_needed_hint:"سجل الدخول من إحدى البوابات لتفعيل المزامنة السحابية.",
   auth_cloud_note:"\ud83d\udd10 الحماية السحابية مفعلة: كلمات المرور الحقيقية تُدار من لوحة Supabase ← Authentication ← Users. الرموز أدناه للوضع المحلي التجريبي فقط.",
   auth_emp_note:"\ud83d\udd10 تنبيه: أنشئ أيضاً حساب دخول مطابق في Supabase (Authentication ← Users ← username@debsa-os.sa) حتى يستطيع الموظف الدخول.",
-  lbl_change_pwd:"تغيير كلمة المرور", pwd_modal_title:"تغيير كلمة مروري",
+  lbl_change_pwd:"إدارة كلمات المرور", pwd_modal_title:"إدارة كلمات المرور (المدير التنفيذي فقط)", pwd_target_lbl:"اختر الحساب", pwd_admin_ok_d:"تم تحديث كلمة مرور:",
   pwd_new_lbl:"كلمة المرور الجديدة (6+ أحرف)", pwd_confirm_lbl:"تأكيد كلمة المرور الجديدة",
   pwd_save_btn:"تحديث كلمة المرور", btn_cancel:"إلغاء",
   pwd_err_short:"كلمة المرور يجب أن تكون 6 أحرف على الأقل.", pwd_err_mismatch:"كلمتا المرور غير متطابقتين.",
@@ -1681,11 +1683,11 @@ function proceedToDashboard(){
   document.getElementById(map[currentRole]).classList.remove('hidden');
   /* Check-in is for CEO, Accountant, BizDev & Employees — NOT the Technical dept */
   document.getElementById('checkin-btn').classList.toggle('hidden', currentRole === 'technical');
-  /* Change-password works only with real cloud auth */
+  /* Password management: CEO ONLY, with a real cloud session */
   (async () => {
     let hasSession = false;
     if(sbClient){ const { data:{ session } } = await sbClient.auth.getSession(); hasSession = !!session; }
-    document.getElementById('change-pwd-btn').classList.toggle('hidden', !hasSession);
+    document.getElementById('change-pwd-btn').classList.toggle('hidden', !(hasSession && currentRole === 'ceo'));
   })();
   if(currentRole === 'ceo') document.getElementById('ops-date-input').value = todayISO();
   showToast(_t('toast_auth_t'), _t('toast_auth_d'));
@@ -1693,12 +1695,19 @@ function proceedToDashboard(){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 function openChangePwdModal(){
+  /* Build the accounts list: 4 gates + every employee */
+  const roleNames = { ceo:_t('gate_label_ceo'), accountant:_t('gate_label_acc'), technical:_t('gate_label_tech'), bizdev:_t('gate_label_bd') };
+  let opts = Object.keys(ROLE_EMAILS).map(r => `<option value="${ROLE_EMAILS[r]}">${esc(roleNames[r] || r)} — ${ROLE_EMAILS[r]}</option>`);
+  opts = opts.concat(dbState.employees.map(e =>
+    `<option value="${e.username.toLowerCase()}@${AUTH_EMAIL_DOMAIN}">${esc(e.name)} — ${e.username.toLowerCase()}@${AUTH_EMAIL_DOMAIN}</option>`));
+  document.getElementById('pwd-target-select').innerHTML = opts.join('');
   document.getElementById('pwd-new-input').value = "";
   document.getElementById('pwd-confirm-input').value = "";
   document.getElementById('pwd-modal-err').classList.add('hidden');
   document.getElementById('modal-change-pwd').classList.remove('hidden');
 }
 async function submitPasswordChange(){
+  const email = document.getElementById('pwd-target-select').value;
   const p1 = document.getElementById('pwd-new-input').value;
   const p2 = document.getElementById('pwd-confirm-input').value;
   const err = document.getElementById('pwd-modal-err');
@@ -1708,11 +1717,22 @@ async function submitPasswordChange(){
   const btn = document.getElementById('pwd-save-btn');
   btn.disabled = true; btn.style.opacity = '.55';
   try{
-    const { error } = await sbClient.auth.updateUser({ password: p1 });
+    const { data: { session } } = await sbClient.auth.getSession();
+    if(!session){ btn.disabled = false; btn.style.opacity = '1'; show(_t('auth_needed_hint')); return; }
+    const res = await fetch(SUPABASE_URL + '/functions/v1/admin-set-password', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.access_token,
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, newPassword: p1 })
+    });
+    const out = await res.json();
     btn.disabled = false; btn.style.opacity = '1';
-    if(error){ show(error.message); return; }
+    if(!res.ok || out.error){ show(out.error || ('HTTP ' + res.status)); return; }
     document.getElementById('modal-change-pwd').classList.add('hidden');
-    showToast(_t('pwd_ok_t'), _t('pwd_ok_d'));
+    showToast(_t('pwd_ok_t'), _t('pwd_admin_ok_d') + ' ' + email);
   }catch(e){ btn.disabled = false; btn.style.opacity = '1'; show('Network: ' + e.message); }
 }
 function exitDashboard(){
