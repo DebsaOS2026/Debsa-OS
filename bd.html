@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Debsa Platform · Business Development</title>
+<meta name="author" content="Sulaiman Alkhateeb">
+<link rel="icon" href="assets/logo-d.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;600;700&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/core.js"></script>
+<script src="assets/pipeline.js"></script>
+<script>
+(async function(){
+const D = DP, { $, $$, t, L, esc, money, fmtDate, relDays, daysUntil, todayISO } = D;
+D.addStrings({
+  en:{ v_overview:'Overview', v_clients:'Potential clients', v_pipeline:'Opportunities', v_follow:'Follow-ups due',
+    k_clients:'Clients', k_open:'Open pipeline', k_due:'Follow-ups due', k_handed:'With Technical', k_reg:'Vendor registrations',
+    by_sector:'Clients by sector', by_rel:'Relationship', reg_status:'Vendor registration by sector', due_list:'Follow-ups due this week', overdue_fu:'overdue',
+    c_name:'Client', c_sector:'Sector', c_rel:'Relationship', c_vendor:'Vendor registration', c_open:'Open opps', c_last:'Last contact', nothing_due:'No follow-ups due. Good work.',
+    registered:'registered', in_prog:'in progress', missing:'not registered' },
+  ar:{ v_overview:'نظرة عامة', v_clients:'العملاء المحتملون', v_pipeline:'الفرص', v_follow:'متابعات مستحقة',
+    k_clients:'العملاء', k_open:'الفرص المفتوحة', k_due:'متابعات مستحقة', k_handed:'لدى التقني', k_reg:'التسجيل كمورّد',
+    by_sector:'العملاء حسب القطاع', by_rel:'نوع العلاقة', reg_status:'التسجيل كمورّد حسب القطاع', due_list:'متابعات مستحقة هذا الأسبوع', overdue_fu:'متأخرة',
+    c_name:'العميل', c_sector:'القطاع', c_rel:'العلاقة', c_vendor:'التسجيل كمورّد', c_open:'فرص مفتوحة', c_last:'آخر تواصل', nothing_due:'لا توجد متابعات مستحقة. عمل ممتاز.',
+    registered:'مسجّل', in_prog:'جارٍ', missing:'غير مسجّل' }
+});
+if (!await D.requireRole(['bizdev'])) return;
+const NAV = [{id:'overview',icon:'home',t:'v_overview'},{id:'clients',icon:'users',t:'v_clients'},{id:'pipeline',icon:'target',t:'v_pipeline'},{id:'follow',icon:'calendar',t:'v_follow',count:1}];
+const C = D.shell({ portal:'bizdev', nav:NAV });
+C.innerHTML = `
+<section class="view" id="v-overview">
+  <div class="grid g4" id="kpis"></div>
+  <div class="grid g3" id="sectors"></div>
+  <div class="grid g2">
+    <div class="card"><div class="hd"><div><h3 data-t="due_list"></h3></div><span class="sp"></span><button class="btn sm" id="fu1">${D.icon('plus')}<span data-t="a_follow"></span></button></div><div class="alerts" id="duelist"></div></div>
+    <div class="card"><h3 data-t="by_rel"></h3><p class="sub"></p><div class="bars" id="relbars"></div></div>
+  </div>
+</section>
+<section class="view" id="v-clients"><div class="card">
+  <div class="tools"><div class="chips" id="secchips"></div><span class="sp"></span><input class="search" id="cq" data-tp="search"><button class="btn pri" id="addc">${D.icon('plus')}<span data-t="a_new_client"></span></button></div>
+  <div class="tbl" id="ctbl"></div></div></section>
+<section class="view" id="v-pipeline"><div class="card">
+  <div class="tools"><div class="chips" id="pchips"></div><span class="sp"></span><button class="btn pri" id="addo">${D.icon('plus')}<span data-t="a_new_opp"></span></button></div>
+  <div id="board"></div></div></section>
+<section class="view" id="v-follow"><div class="card">
+  <div class="tools"><span class="sp"></span><button class="btn pri" id="fu2">${D.icon('plus')}<span data-t="a_follow"></span></button></div>
+  <div class="tbl" id="ftbl"></div></div></section>`;
+D.applyLang();
+let secF = 'all', pF = 'all';
+const refresh = async () => { await PL.load(); render(); };
+const S = PL.S;
+function openOpps(c){ return S.opps.filter(o => o.client_id === c.id && !['won','lost'].includes(o.stage)); }
+function lastContact(c){ const f = S.fus.filter(x => x.client_id === c.id).sort((a,b) => a.f_date < b.f_date ? 1 : -1)[0]; return f ? f.f_date : null; }
+function render(){
+  const open = S.opps.filter(o => !['won','lost'].includes(o.stage));
+  const due = S.opps.filter(o => D.BD_STAGES.includes(o.stage) && o.next_followup && daysUntil(o.next_followup) <= 7).sort((a,b) => a.next_followup > b.next_followup ? 1 : -1);
+  const dueNow = due.filter(o => daysUntil(o.next_followup) <= 0);
+  const handed = S.opps.filter(o => D.TECH_STAGES.includes(o.stage));
+  const reg = S.clients.filter(c => c.vendor_status === 'registered').length, regNeed = S.clients.filter(c => c.vendor_status !== 'not_required').length;
+  D.setCount('follow', dueNow.length);
+  $('#kpis').innerHTML = [
+    ['k_clients', S.clients.length, L(S.clients.filter(c=>c.relation==='new').length+' new this list', S.clients.filter(c=>c.relation==='new').length+' عملاء جدد'), 'acc'],
+    ['k_open', money(open.reduce((s,o)=>s+Number(o.proposal_value||o.est_value||0),0),{short:true}), L(open.length+' opportunities', open.length+' فرصة'), 'hot'],
+    ['k_due', dueNow.length, L(due.length+' due within 7 days', due.length+' خلال 7 أيام'), dueNow.length?'alert':''],
+    ['k_reg', reg+' / '+regNeed, L('registered as vendor','مسجّل كمورّد'), '']
+  ].map(([l,v,s,c]) => `<div class="kpi ${c}"><span class="l">${esc(t(l))}</span><span class="v num">${v}</span><span class="s">${esc(s)}</span></div>`).join('');
+  $('#sectors').innerHTML = D.SECTORS.map(sec => { const cs = S.clients.filter(c => c.sector === sec); const r = cs.filter(c=>c.vendor_status==='registered').length, p = cs.filter(c=>c.vendor_status==='in_progress').length, n = cs.filter(c=>c.vendor_status==='not_registered').length;
+    const ops = S.opps.filter(o => cs.some(c => c.id === o.client_id) && !['won','lost'].includes(o.stage));
+    return `<div class="card"><div class="hd"><div><h3>${esc(t('s_'+sec))}</h3><p class="sub" style="margin:0">${cs.length} ${esc(t('k_clients'))} · ${ops.length} ${esc(t('opps'))} · ${money(ops.reduce((s,o)=>s+Number(o.proposal_value||o.est_value||0),0),{short:true})}</p></div></div>
+      <div class="bars"><div class="br"><span>${esc(t('registered'))}</span><div class="track"><div class="fill" style="width:${cs.length?r/cs.length*100:0}%;background:var(--good)"></div></div><span class="v">${r}</span></div>
+      <div class="br"><span>${esc(t('in_prog'))}</span><div class="track"><div class="fill" style="width:${cs.length?p/cs.length*100:0}%;background:var(--warn)"></div></div><span class="v">${p}</span></div>
+      <div class="br"><span>${esc(t('missing'))}</span><div class="track"><div class="fill" style="width:${cs.length?n/cs.length*100:0}%;background:var(--bad)"></div></div><span class="v">${n}</span></div></div></div>`; }).join('');
+  $('#duelist').innerHTML = due.length ? due.map(o => { const c = PL.client(o.client_id), d = daysUntil(o.next_followup);
+    return `<div class="al ${d<0?'bad':d===0?'warn':'info'}" data-o="${o.id}" style="cursor:pointer"><span class="tag">${esc(relDays(o.next_followup))}</span><div><b>${esc(c.name||'')}</b><div class="m">${esc(o.title)}</div></div>${D.stagePill(o.stage)}</div>`; }).join('') : `<div class="empty">${esc(t('nothing_due'))}</div>`;
+  $$('#duelist [data-o]').forEach(el => el.onclick = () => PL.oppModal(S.opps.find(o => o.id === +el.dataset.o), refresh));
+  const rel = D.RELATIONS.map(r => [r, S.clients.filter(c => c.relation === r).length]); const rm = Math.max(1, ...rel.map(x=>x[1]));
+  $('#relbars').innerHTML = rel.map(([r,n]) => `<div class="br"><span>${esc(t('rel_'+r))}</span><div class="track"><div class="fill" style="width:${n/rm*100}%"></div></div><span class="v">${n}</span></div>`).join('');
+  renderClients(); renderBoard(); renderFollow();
+}
+function renderClients(){
+  const q = ($('#cq').value||'').toLowerCase();
+  D.chips($('#secchips'), [{v:'all',l:t('all'),c:S.clients.length}, ...D.SECTORS.map(s => ({v:s,l:t('s_'+s),c:S.clients.filter(c=>c.sector===s).length}))], secF, v => { secF = v; renderClients(); });
+  const rows = S.clients.filter(c => (secF==='all' || c.sector===secF) && (!q || (c.name+' '+(c.contact_name||'')+' '+(c.city||'')).toLowerCase().includes(q)));
+  D.table($('#ctbl'), { rows, onRow: c => PL.clientModal(c, refresh), cols:[
+    {h:t('c_name'), f:c => `<span class="t">${esc(c.name)}</span><div class="m">${esc([c.contact_name,c.city].filter(Boolean).join(' · '))}</div>`},
+    {h:t('c_sector'), f:c => D.sectorPill(c.sector)}, {h:t('c_rel'), f:c => esc(t('rel_'+c.relation))}, {h:t('c_vendor'), f:c => D.vendorPill(c.vendor_status)},
+    {h:t('c_open'), r:1, f:c => openOpps(c).length}, {h:t('c_last'), f:c => { const l = lastContact(c); return l ? esc(relDays(l)) : '<span class="m">—</span>'; }} ]});
+}
+function renderBoard(){
+  D.chips($('#pchips'), [{v:'all',l:t('all')}, ...D.SECTORS.map(s => ({v:s,l:t('s_'+s)}))], pF, v => { pF = v; renderBoard(); });
+  const ops = S.opps.filter(o => pF==='all' || PL.client(o.client_id).sector === pF);
+  PL.kanban($('#board'), ['lead','following_up','recommended','technical_review','assigned','proposal_submitted','won','on_hold','lost'], ops, refresh);
+}
+function renderFollow(){
+  const rows = S.opps.filter(o => D.BD_STAGES.includes(o.stage) || o.stage === 'on_hold').sort((a,b) => (a.next_followup||'9') > (b.next_followup||'9') ? 1 : -1);
+  D.table($('#ftbl'), { rows, onRow: o => PL.oppModal(o, refresh), empty:[t('nothing_due')], cols:[
+    {h:t('o_next'), f:o => o.next_followup ? `<span class="pill ${daysUntil(o.next_followup)<0?'bad':daysUntil(o.next_followup)===0?'warn':''}">${esc(relDays(o.next_followup))}</span><div class="m">${esc(fmtDate(o.next_followup))}</div>` : '<span class="m">—</span>'},
+    {h:t('c_name'), f:o => `<span class="t">${esc(PL.client(o.client_id).name||'')}</span><div class="m">${esc(o.title)}</div>`},
+    {h:t('c_sector'), f:o => PL.client(o.client_id).sector ? D.sectorPill(PL.client(o.client_id).sector) : ''}, {h:t('o_stage'), f:o => D.stagePill(o.stage)},
+    {h:t('o_value'), r:1, f:o => money(o.est_value)} ]});
+}
+$('#addc').onclick = () => PL.clientForm(null, refresh); $('#cq').oninput = renderClients;
+$('#addo').onclick = () => PL.oppForm(null, refresh);
+$('#fu1').onclick = $('#fu2').onclick = () => PL.followForm({}, refresh);
+D.onLang = render;
+D.views(NAV);
+await refresh();
+D.DB.subscribe(['dp_clients','dp_opportunities','dp_followups'], refresh);
+})();
+</script>
+</body>
+</html>

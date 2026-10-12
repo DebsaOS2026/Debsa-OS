@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Debsa Platform · CEO Command Center</title>
+<meta name="author" content="Sulaiman Alkhateeb">
+<link rel="icon" href="assets/logo-d.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;600;700&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/core.js"></script>
+<script src="assets/pipeline.js"></script>
+<script>
+(async function(){
+const D = DP, { $, $$, t, L, esc, money, fmtDate, fmtTime, relDays, daysUntil, docStatus, invState, todayISO } = D;
+D.addStrings({
+  en:{ v_today:'Today', v_flow:'Pipeline flow', v_activity:'Activity', v_accounts:'Accounts & passwords',
+    k_cash:'Net cash (this month)', k_recv:'Owed to us', k_pipe:'Open pipeline', k_won:'Won this year', k_alerts:'Needs your attention',
+    alerts:'Needs your attention', flow:'From first contact to proposal', flow_sub:'Every opportunity, where it sits right now. Blue is BD, orange is Technical.',
+    today_feed:'What happened', by_sector:'Pipeline by sector', docs:'Documents', fin:'Finance', bd:'Business development', tech:'Technical',
+    a_doc:'Document', a_inv:'Collection', a_fu:'Follow-up', a_rec:'Waiting for Technical', a_prop:'Proposal due', no_alerts:'All clear. Nothing needs you right now.',
+    acc_sub:'Reset the password for any portal account. Share the new password with the person directly.', acc_user:'Account', acc_new:'New password', acc_confirm:'Confirm password',
+    acc_set:'Set password', acc_short:'Use at least 8 characters.', acc_mismatch:'The two passwords do not match.', acc_ok:'Password updated for', no_activity:'No activity yet.',
+    act_insert:'added', act_update:'updated', act_delete:'removed', e_dp_invoices:'invoice', e_dp_transactions:'cash entry', e_dp_documents:'document', e_dp_clients:'client', e_dp_opportunities:'opportunity', e_dp_followups:'follow-up',
+    flow_bd:'Business development', flow_tech:'Technical', conv:'Win rate (decided)', open_portal:'Open portal' },
+  ar:{ v_today:'اليوم', v_flow:'مسار الفرص', v_activity:'النشاط', v_accounts:'الحسابات وكلمات المرور',
+    k_cash:'صافي النقد (هذا الشهر)', k_recv:'مستحق لنا', k_pipe:'الفرص المفتوحة', k_won:'الفوز هذه السنة', k_alerts:'يحتاج انتباهك',
+    alerts:'يحتاج انتباهك', flow:'من أول تواصل حتى تقديم العرض', flow_sub:'كل فرصة وأين تقف الآن. الأزرق تطوير الأعمال، والبرتقالي التقني.',
+    today_feed:'ماذا حدث', by_sector:'الفرص حسب القطاع', docs:'الوثائق', fin:'المالية', bd:'تطوير الأعمال', tech:'التقني',
+    a_doc:'وثيقة', a_inv:'تحصيل', a_fu:'متابعة', a_rec:'بانتظار التقني', a_prop:'عرض مستحق', no_alerts:'كل شيء سليم. لا شيء يحتاجك الآن.',
+    acc_sub:'أعد تعيين كلمة المرور لأي حساب. أرسل كلمة المرور الجديدة للشخص مباشرة.', acc_user:'الحساب', acc_new:'كلمة المرور الجديدة', acc_confirm:'تأكيد كلمة المرور',
+    acc_set:'تعيين كلمة المرور', acc_short:'استخدم 8 أحرف على الأقل.', acc_mismatch:'كلمتا المرور غير متطابقتين.', acc_ok:'تم تحديث كلمة المرور لـ', no_activity:'لا يوجد نشاط بعد.',
+    act_insert:'أضاف', act_update:'حدّث', act_delete:'حذف', e_dp_invoices:'فاتورة', e_dp_transactions:'حركة نقدية', e_dp_documents:'وثيقة', e_dp_clients:'عميل', e_dp_opportunities:'فرصة', e_dp_followups:'متابعة',
+    flow_bd:'تطوير الأعمال', flow_tech:'التقني', conv:'نسبة الفوز (المحسومة)', open_portal:'فتح البوابة' }
+});
+if (!await D.requireRole(['ceo'])) return;
+const NAV = [{id:'today',icon:'home',t:'v_today',count:1},{id:'flow',icon:'flow',t:'v_flow'},{id:'activity',icon:'bell',t:'v_activity'},{id:'accounts',icon:'key',t:'v_accounts'}];
+const C = D.shell({ portal:'ceo', nav:NAV });
+C.innerHTML = `
+<section class="view" id="v-today">
+  <div class="grid g4" id="kpis"></div>
+  <div class="card"><div class="hd"><div><h3 data-t="flow"></h3><p class="sub" style="margin:0" data-t="flow_sub"></p></div></div><div class="flow" id="flow"></div>
+    <div class="flow-legend"><span><i style="background:var(--info)"></i><span data-t="flow_bd"></span></span><span><i style="background:var(--orange)"></i><span data-t="flow_tech"></span></span><span id="conv"></span></div></div>
+  <div class="grid g21">
+    <div class="card"><h3 data-t="alerts"></h3><p class="sub"></p><div class="alerts" id="alerts"></div></div>
+    <div class="card"><h3 data-t="today_feed"></h3><p class="sub"></p><div class="feed" id="feed"></div></div>
+  </div>
+  <div class="grid g3">
+    <div class="card"><div class="hd"><h3 data-t="fin"></h3><span class="sp"></span><a class="btn sm" href="finance.html${D.DEMO?'?demo=ceo':''}" data-t="open_portal"></a></div><div class="bars" id="finbars"></div></div>
+    <div class="card"><div class="hd"><h3 data-t="by_sector"></h3><span class="sp"></span><a class="btn sm" href="bd.html${D.DEMO?'?demo=ceo':''}" data-t="open_portal"></a></div><div class="bars" id="secbars"></div></div>
+    <div class="card"><div class="hd"><h3 data-t="docs"></h3><span class="sp"></span><a class="btn sm" href="finance.html${D.DEMO?'?demo=ceo':''}#docs" data-t="open_portal"></a></div><div class="bars" id="docbars"></div></div>
+  </div>
+</section>
+<section class="view" id="v-flow"><div class="card"><div id="board"></div></div></section>
+<section class="view" id="v-activity"><div class="card"><div class="feed" id="feedall"></div></div></section>
+<section class="view" id="v-accounts"><div class="card" style="max-width:640px">
+  <h3 data-t="v_accounts"></h3><p class="sub" data-t="acc_sub"></p>
+  <form class="form" id="pf">
+    <div class="f full"><label for="pu" data-t="acc_user"></label><select id="pu">${['ceo','accountant','bizdev','technical'].map(u => `<option value="${u}">${u}</option>`).join('')}</select></div>
+    <div class="f"><label for="p1" data-t="acc_new"></label><input id="p1" type="password" autocomplete="new-password"></div>
+    <div class="f"><label for="p2" data-t="acc_confirm"></label><input id="p2" type="password" autocomplete="new-password"></div>
+    <div class="f full" style="flex-direction:row;align-items:center;gap:12px"><button class="btn pri" type="submit" data-t="acc_set"></button><span id="perr" style="color:var(--bad);font-size:13px"></span></div>
+  </form></div></section>`;
+D.applyLang();
+const S = PL.S; let INV = [], TX = [], DOCS = [], ACT = [];
+const refresh = async () => { await PL.load(); [INV, TX, DOCS, ACT] = await Promise.all([D.DB.list('dp_invoices'), D.DB.list('dp_transactions'), D.DB.list('dp_documents',{order:'expiry_date',asc:true}), D.DB.list('dp_activity',{order:'at',limit:200})]); render(); };
+function feedHTML(rows){ return rows.length ? rows.map(a => `<div class="fi"><time>${esc(new Date(a.at).toDateString() === new Date().toDateString() ? fmtTime(a.at) : fmtDate(a.at))}</time><div><span class="who ${esc(a.actor_role||'')}">${esc(a.actor_role ? t('r_'+a.actor_role) : 'system')}</span> · ${esc(t('act_'+a.action))} ${esc(t('e_'+a.entity))}<div>${esc(D.trSummary(a.summary))}</div></div></div>`).join('') : `<div class="empty">${esc(t('no_activity'))}</div>`; }
+function render(){
+  const ym = todayISO().slice(0,7), yr = todayISO().slice(0,4);
+  const net = TX.filter(x => String(x.tx_date).startsWith(ym)).reduce((s,x) => s + (x.direction==='in'?1:-1)*x.amount, 0);
+  const openInv = INV.filter(i => ['pending','partial'].includes(i.status)); const recv = openInv.reduce((s,i) => s + invState(i).out, 0);
+  const overInv = openInv.filter(i => invState(i).k === 'overdue');
+  const open = S.opps.filter(o => !['won','lost'].includes(o.stage)); const pipe = open.reduce((s,o) => s + Number(o.proposal_value || o.est_value || 0), 0);
+  const won = S.opps.filter(o => o.stage === 'won' && String(o.updated_at).startsWith(yr)); const lost = S.opps.filter(o => o.stage === 'lost');
+  // alerts
+  const al = [];
+  DOCS.forEach(d => { const s = docStatus(d); if (['expired','critical'].includes(s.k)) al.push({c:'bad', tag:t('a_doc'), b:d.name, m:t('ds_'+s.k)+' · '+fmtDate(d.expiry_date)+' · '+relDays(d.expiry_date), w:s.d}); });
+  overInv.forEach(i => al.push({c:'bad', tag:t('a_inv'), b:i.client_name+' · '+money(invState(i).out,{short:true}), m:(i.invoice_no||'')+' · '+t('i_overdue')+' '+relDays(i.due_date), w:daysUntil(i.due_date)}));
+  S.opps.filter(o => o.stage === 'recommended' && o.recommended_at).forEach(o => { const w = Math.floor((Date.now() - new Date(o.recommended_at)) / 864e5); if (w >= 2) al.push({c:'warn', tag:t('a_rec'), b:o.title, m:PL.client(o.client_id).name+' · '+w+' '+t('days'), w:-w, o:o.id}); });
+  S.opps.filter(o => D.BD_STAGES.includes(o.stage) && o.next_followup && daysUntil(o.next_followup) < 0).forEach(o => al.push({c:'warn', tag:t('a_fu'), b:PL.client(o.client_id).name, m:o.title+' · '+relDays(o.next_followup), w:daysUntil(o.next_followup), o:o.id}));
+  S.opps.filter(o => o.stage === 'assigned' && o.proposal_due && daysUntil(o.proposal_due) <= 3).forEach(o => al.push({c:daysUntil(o.proposal_due)<0?'bad':'info', tag:t('a_prop'), b:o.title, m:relDays(o.proposal_due)+(PL.member(o.scope_lead)?' · '+PL.member(o.scope_lead).name:''), w:daysUntil(o.proposal_due), o:o.id}));
+  al.sort((a,b) => (a.c==='bad'?0:1) - (b.c==='bad'?0:1) || a.w - b.w);
+  D.setCount('today', al.length);
+  $('#kpis').innerHTML = [
+    ['k_cash', money(net,{short:true}), L('money in minus money out','الداخل ناقص الخارج'), net>=0?'acc':'alert'],
+    ['k_recv', money(recv,{short:true}), L(overInv.length+' overdue · '+money(overInv.reduce((s,i)=>s+invState(i).out,0),{short:true}), overInv.length+' متأخرة · '+money(overInv.reduce((s,i)=>s+invState(i).out,0),{short:true})), overInv.length?'alert':''],
+    ['k_pipe', money(pipe,{short:true}), L(open.length+' open opportunities', open.length+' فرصة مفتوحة'), 'hot'],
+    ['k_alerts', al.length, L(al.filter(a=>a.c==='bad').length+' urgent', al.filter(a=>a.c==='bad').length+' عاجلة'), al.length?'alert':'']
+  ].map(([l,v,s,c]) => `<div class="kpi ${c}"><span class="l">${esc(t(l))}</span><span class="v num">${v}</span><span class="s">${esc(s)}</span></div>`).join('');
+  const steps = [['lead','bd'],['following_up','bd'],['recommended','tech'],['technical_review','tech'],['assigned','tech'],['proposal_submitted','tech'],['won','won']];
+  $('#flow').innerHTML = steps.map(([s,c]) => { const l = S.opps.filter(o => o.stage === s); return `<div class="fstep ${c}"><div class="n num">${l.length}</div><div class="l">${esc(t('st_'+s))}</div><div class="v num">${money(l.reduce((a,o)=>a+Number(o.proposal_value||o.est_value||0),0),{short:true})}</div></div>`; }).join('');
+  const dec = won.length + lost.length; $('#conv').innerHTML = esc(t('conv')) + ': <b>' + (dec ? Math.round(S.opps.filter(o=>o.stage==='won').length / (S.opps.filter(o=>o.stage==='won').length + lost.length) * 100) + '%' : '—') + '</b>';
+  $('#alerts').innerHTML = al.length ? al.slice(0,12).map(a => `<div class="al ${a.c}" ${a.o?`data-o="${a.o}" style="cursor:pointer"`:''}><span class="tag">${esc(a.tag)}</span><div><b>${esc(a.b)}</b><div class="m">${esc(a.m)}</div></div><span></span></div>`).join('') : `<div class="empty">${esc(t('no_alerts'))}</div>`;
+  $$('#alerts [data-o]').forEach(el => el.onclick = () => PL.oppModal(S.opps.find(o => o.id === +el.dataset.o), refresh));
+  $('#feed').innerHTML = feedHTML(ACT.slice(0,10)); $('#feedall').innerHTML = feedHTML(ACT);
+  const toIssue = INV.filter(i => i.status === 'to_issue').reduce((s,i)=>s+ +i.amount,0);
+  const fb = [[L('Owed to us','مستحق لنا'),recv,'var(--orange)'],[L('Overdue','متأخر'),overInv.reduce((s,i)=>s+invState(i).out,0),'var(--bad)'],[L('Ready to invoice','جاهز للفوترة'),toIssue,'var(--info)']]; const fm = Math.max(1, ...fb.map(x=>x[1]));
+  $('#finbars').innerHTML = fb.map(([l,v,c]) => `<div class="br"><span>${esc(l)}</span><div class="track"><div class="fill" style="width:${v/fm*100}%;background:${c}"></div></div><span class="v">${money(v,{short:true,noCur:true})}</span></div>`).join('');
+  const sb = D.SECTORS.map(sec => [t('s_'+sec), open.filter(o => PL.client(o.client_id).sector === sec).reduce((s,o)=>s+Number(o.proposal_value||o.est_value||0),0)]); const sm = Math.max(1, ...sb.map(x=>x[1]));
+  $('#secbars').innerHTML = sb.map(([l,v]) => `<div class="br"><span>${esc(l)}</span><div class="track"><div class="fill" style="width:${v/sm*100}%"></div></div><span class="v">${money(v,{short:true,noCur:true})}</span></div>`).join('');
+  const dk = ['expired','critical','soon','valid'].map(k => [k, DOCS.filter(d => docStatus(d).k === k).length]); const dm = Math.max(1, ...dk.map(x=>x[1]));
+  $('#docbars').innerHTML = dk.map(([k,n]) => `<div class="br"><span>${esc(t('ds_'+k))}</span><div class="track"><div class="fill" style="width:${n/dm*100}%;background:${k==='valid'?'var(--good)':k==='soon'?'var(--warn)':'var(--bad)'}"></div></div><span class="v">${n}</span></div>`).join('');
+  PL.kanban($('#board'), ['lead','following_up','recommended','technical_review','assigned','proposal_submitted','won','on_hold','lost'], S.opps, refresh);
+}
+$('#pf').onsubmit = async e => { e.preventDefault(); const u = $('#pu').value, a = $('#p1').value, b = $('#p2').value; $('#perr').textContent = '';
+  if (a.length < 8){ $('#perr').textContent = t('acc_short'); return; } if (a !== b){ $('#perr').textContent = t('acc_mismatch'); return; }
+  try { await D.setPassword(u, a); $('#p1').value = $('#p2').value = ''; D.toast(t('acc_ok') + ' ' + u); } catch(err){ $('#perr').textContent = err.message; } };
+D.onLang = render;
+D.views(NAV);
+await refresh();
+D.DB.subscribe(['dp_invoices','dp_transactions','dp_documents','dp_clients','dp_opportunities','dp_followups','dp_activity'], refresh);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Debsa Platform · Technical</title>
+<meta name="author" content="Sulaiman Alkhateeb">
+<link rel="icon" href="assets/logo-d.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;600;700&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/core.js"></script>
+<script src="assets/pipeline.js"></script>
+<script>
+(async function(){
+const D = DP, { $, $$, t, L, esc, money, fmtDate, relDays, daysUntil } = D;
+D.addStrings({
+  en:{ v_inbox:'New from BD', v_board:'Technical board', v_team:'Team & workload', v_docs_ok:'Company documents',
+    k_inbox:'Waiting for you', k_review:'In review', k_assigned:'With the team', k_due:'Proposals due this week',
+    inbox_sub:'Opportunities BD recommended. Read the recommendation, then start the review or assign the scope.', empty_inbox:'Nothing waiting. BD has no new recommendations.',
+    add_member:'Add team member', m_name:'Name', m_disc:'Discipline', m_active:'Active', load:'Open assignments', due_next:'Next proposal due',
+    docs_sub:'Read-only view so the team knows which licences are valid before a bid.', yes:'Yes', no:'No' },
+  ar:{ v_inbox:'الوارد من تطوير الأعمال', v_board:'اللوحة التقنية', v_team:'الفريق وعبء العمل', v_docs_ok:'وثائق الشركة',
+    k_inbox:'بانتظارك', k_review:'قيد المراجعة', k_assigned:'لدى الفريق', k_due:'عروض مستحقة هذا الأسبوع',
+    inbox_sub:'فرص أوصى بها فريق تطوير الأعمال. اقرأ التوصية ثم ابدأ المراجعة أو وزّع النطاق.', empty_inbox:'لا يوجد وارد. لا توصيات جديدة من تطوير الأعمال.',
+    add_member:'إضافة عضو', m_name:'الاسم', m_disc:'التخصص', m_active:'نشط', load:'المهام المفتوحة', due_next:'أقرب عرض مستحق',
+    docs_sub:'عرض للاطلاع فقط ليعرف الفريق صلاحية الرخص قبل التقديم.', yes:'نعم', no:'لا' }
+});
+if (!await D.requireRole(['technical'])) return;
+const NAV = [{id:'inbox',icon:'inbox',t:'v_inbox',count:1},{id:'board',icon:'flow',t:'v_board'},{id:'team',icon:'team',t:'v_team'},{id:'docs',icon:'doc',t:'v_docs_ok'}];
+const C = D.shell({ portal:'technical', nav:NAV });
+C.innerHTML = `
+<section class="view" id="v-inbox">
+  <div class="grid g4" id="kpis"></div>
+  <div class="card"><h3 data-t="v_inbox"></h3><p class="sub" data-t="inbox_sub"></p><div class="grid g2" id="inbox"></div></div>
+</section>
+<section class="view" id="v-board"><div class="card"><div id="board"></div></div></section>
+<section class="view" id="v-team"><div class="card">
+  <div class="tools"><span class="sp"></span><button class="btn pri" id="addm">${D.icon('plus')}<span data-t="add_member"></span></button></div>
+  <div class="tbl" id="ttbl"></div></div></section>
+<section class="view" id="v-docs"><div class="card"><p class="sub" data-t="docs_sub"></p><div class="tbl" id="dtbl"></div></div></section>`;
+D.applyLang();
+const S = PL.S; let DOCS = [];
+const refresh = async () => { await PL.load(); DOCS = await D.DB.list('dp_documents',{order:'expiry_date',asc:true}); render(); };
+function render(){
+  const inbox = S.opps.filter(o => o.stage === 'recommended').sort((a,b) => a.recommended_at > b.recommended_at ? 1 : -1);
+  const review = S.opps.filter(o => o.stage === 'technical_review'), assigned = S.opps.filter(o => o.stage === 'assigned');
+  const due = assigned.filter(o => o.proposal_due && daysUntil(o.proposal_due) <= 7);
+  D.setCount('inbox', inbox.length);
+  $('#kpis').innerHTML = [['k_inbox',inbox.length,inbox.length?'alert':''],['k_review',review.length,'acc'],['k_assigned',assigned.length,'hot'],['k_due',due.length,due.length?'alert':'']]
+    .map(([l,v,c]) => `<div class="kpi ${c}"><span class="l">${esc(t(l))}</span><span class="v num">${v}</span></div>`).join('');
+  $('#inbox').innerHTML = inbox.length ? inbox.map(o => { const c = PL.client(o.client_id); const w = Math.floor((Date.now() - new Date(o.recommended_at)) / 864e5);
+    return `<div class="kc" data-o="${o.id}" style="padding:16px"><div class="row" style="justify-content:space-between"><b style="font-size:15px">${esc(o.title)}</b><span class="pill ${w>=3?'bad':'warn'}">${w} ${esc(t('days'))} ${esc(t('waiting'))}</span></div>
+      <span class="m">${esc(c.name||'')} · ${esc(o.service ? t('sv_'+o.service) : '')} · ${money(o.est_value,{short:true})}</span>
+      <div style="background:var(--orange-soft);border-radius:8px;padding:10px 12px;font-size:13px">${esc(o.recommendation||'')}</div>
+      <div class="row">${c.sector ? D.sectorPill(c.sector) : ''}${c.vendor_status ? D.vendorPill(c.vendor_status) : ''}</div></div>`; }).join('') : `<div class="empty">${esc(t('empty_inbox'))}</div>`;
+  $$('#inbox [data-o]').forEach(el => el.onclick = () => PL.oppModal(S.opps.find(o => o.id === +el.dataset.o), refresh));
+  PL.kanban($('#board'), ['recommended','technical_review','assigned','proposal_submitted','won','lost'], S.opps.filter(o => !D.BD_STAGES.includes(o.stage) && o.stage !== 'on_hold'), refresh);
+  D.table($('#ttbl'), { rows:S.team, onRow:editMember, empty:[L('Add your team so you can assign scopes','أضف فريقك لتتمكن من توزيع النطاقات')], cols:[
+    {h:t('m_name'), f:m => `<span class="t">${esc(m.name)}</span>`}, {h:t('m_disc'), f:m => esc(m.discipline||'—')},
+    {h:t('load'), r:1, f:m => S.opps.filter(o => o.scope_lead === m.id && ['technical_review','assigned'].includes(o.stage)).length},
+    {h:t('due_next'), f:m => { const n = S.opps.filter(o => o.scope_lead === m.id && o.stage === 'assigned' && o.proposal_due).sort((a,b) => a.proposal_due > b.proposal_due ? 1 : -1)[0]; return n ? `${esc(n.title)}<div class="m">${esc(relDays(n.proposal_due))}</div>` : '—'; }},
+    {h:t('m_active'), f:m => m.active ? `<span class="pill good">${esc(t('yes'))}</span>` : `<span class="pill">${esc(t('no'))}</span>`} ]});
+  D.table($('#dtbl'), { rows:DOCS, cols:[ {h:L('Document','الوثيقة'), f:d => `<span class="t">${esc(d.name)}</span><div class="m">${esc(d.ref_no||'')}</div>`}, {h:L('Expiry','الانتهاء'), f:d => esc(fmtDate(d.expiry_date))},
+    {h:L('Status','الحالة'), f:d => { const s = D.docStatus(d); return `<span class="pill ${s.cls}">${esc(t('ds_'+s.k))}</span>`; }} ]});
+}
+function editMember(m){ D.form({ title: m ? m.name : t('add_member'), values: m || {active:'true'},
+  fields:[{k:'name',label:t('m_name'),req:1},{k:'discipline',label:t('m_disc'),type:'select',blank:1,options:D.SERVICES.map(v => ({v,l:t('sv_'+v)}))},{k:'active',label:t('m_active'),type:'select',options:[{v:'true',l:t('yes')},{v:'false',l:t('no')}]}],
+  onSave: async v => { v.active = String(v.active) !== 'false'; if (m) await D.DB.update('dp_team', m.id, v); else await D.DB.insert('dp_team', v); await refresh(); },
+  onDelete: m ? async () => { await D.DB.remove('dp_team', m.id); await refresh(); } : null }); }
+$('#addm').onclick = () => editMember(null);
+D.onLang = render;
+D.views(NAV);
+await refresh();
+D.DB.subscribe(['dp_opportunities','dp_followups','dp_team'], refresh);
+})();
+</script>
+</body>
+</html>

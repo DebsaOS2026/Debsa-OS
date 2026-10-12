@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Debsa Platform · Finance</title>
+<meta name="author" content="Sulaiman Alkhateeb">
+<link rel="icon" href="assets/logo-d.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;600;700&family=Manrope:wght@400;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/core.js"></script>
+<script>
+(async function(){
+const D = DP, { $, $$, t, L, esc, money, fmtDate, relDays, docStatus, invState, daysUntil, todayISO } = D;
+D.addStrings({
+  en:{ v_overview:'Overview', v_invoices:'Invoices', v_cash:'Cash ledger', v_docs:'Document control',
+    k_in:'Money in (this month)', k_out:'Money out (this month)', k_recv:'Owed to us', k_over:'Overdue', k_issue:'Invoices to issue', k_docs:'Documents needing action',
+    cash_6m:'Money in and out, last 6 months', recv_by:'Who owes us', doc_alerts:'Document alerts', inv_due:'Collections to chase',
+    new_inv:'New invoice', new_tx:'Record money in / out', new_doc:'Add document', pay:'Record payment', remind:'Mark reminder sent',
+    f_invoice_no:'Invoice no.', f_client:'Client', f_project:'Project', f_amount:'Amount (SAR)', f_paid:'Paid so far (SAR)', f_issue:'Issue date', f_due:'Due date', f_status:'Status', f_notes:'Notes',
+    f_date:'Date', f_dir:'Direction', f_cat:'Category', f_desc:'Description', f_inv:'Linked invoice', in:'Money in', out:'Money out',
+    f_name:'Document name', f_type:'Type', f_issuer:'Issued by', f_ref:'Reference no.', f_exp:'Expiry date', f_resp:'Responsible',
+    c_inv:'Invoice', c_client:'Client / project', c_amount:'Amount', c_out:'Outstanding', c_due:'Due', c_status:'Status',
+    c_date:'Date', c_desc:'Description', c_cat:'Category', c_in:'In', c_outc:'Out', c_doc:'Document', c_exp:'Expiry', c_left:'Days left', c_resp:'Responsible',
+    pay_amount:'Payment amount (SAR)', pay_date:'Payment date', net:'Net', balance:'Net for period', no_alerts:'No alerts. Everything is in order.',
+    reminded:'Reminder', st_overdue_f:'Overdue', last6:'6 months' },
+  ar:{ v_overview:'نظرة عامة', v_invoices:'الفواتير', v_cash:'دفتر النقد', v_docs:'التحكم بالوثائق',
+    k_in:'الداخل (هذا الشهر)', k_out:'الخارج (هذا الشهر)', k_recv:'مستحق لنا', k_over:'متأخر', k_issue:'فواتير بانتظار الإصدار', k_docs:'وثائق تحتاج إجراء',
+    cash_6m:'الداخل والخارج خلال آخر 6 أشهر', recv_by:'من يدين لنا', doc_alerts:'تنبيهات الوثائق', inv_due:'تحصيلات تحتاج متابعة',
+    new_inv:'فاتورة جديدة', new_tx:'تسجيل داخل / خارج', new_doc:'إضافة وثيقة', pay:'تسجيل دفعة', remind:'تسجيل إرسال تذكير',
+    f_invoice_no:'رقم الفاتورة', f_client:'العميل', f_project:'المشروع', f_amount:'المبلغ (ريال)', f_paid:'المدفوع حتى الآن (ريال)', f_issue:'تاريخ الإصدار', f_due:'تاريخ الاستحقاق', f_status:'الحالة', f_notes:'ملاحظات',
+    f_date:'التاريخ', f_dir:'النوع', f_cat:'التصنيف', f_desc:'الوصف', f_inv:'الفاتورة المرتبطة', in:'داخل', out:'خارج',
+    f_name:'اسم الوثيقة', f_type:'النوع', f_issuer:'الجهة المصدرة', f_ref:'الرقم المرجعي', f_exp:'تاريخ الانتهاء', f_resp:'المسؤول',
+    c_inv:'الفاتورة', c_client:'العميل / المشروع', c_amount:'المبلغ', c_out:'المتبقي', c_due:'الاستحقاق', c_status:'الحالة',
+    c_date:'التاريخ', c_desc:'الوصف', c_cat:'التصنيف', c_in:'داخل', c_outc:'خارج', c_doc:'الوثيقة', c_exp:'الانتهاء', c_left:'الأيام المتبقية', c_resp:'المسؤول',
+    pay_amount:'مبلغ الدفعة (ريال)', pay_date:'تاريخ الدفعة', net:'الصافي', balance:'صافي الفترة', no_alerts:'لا توجد تنبيهات. كل شيء سليم.',
+    reminded:'تذكير', st_overdue_f:'متأخرة', last6:'6 أشهر' }
+});
+if (!await D.requireRole(['accountant'])) return;
+const NAV = [{id:'overview',icon:'home',t:'v_overview'},{id:'invoices',icon:'invoice',t:'v_invoices',count:1},{id:'cash',icon:'money',t:'v_cash'},{id:'docs',icon:'doc',t:'v_docs',count:1}];
+const C = D.shell({ portal:'accountant', nav:NAV });
+C.innerHTML = `
+<section class="view" id="v-overview">
+  <div class="grid g3" id="kpis"></div>
+  <div class="grid g21">
+    <div class="card"><h3 data-t="cash_6m"></h3><p class="sub" id="cashsub"></p><div class="cols" id="cols"></div>
+      <div class="flow-legend"><span><i style="background:var(--good)"></i><span data-t="in"></span></span><span><i style="background:var(--grey-2)"></i><span data-t="out"></span></span></div></div>
+    <div class="card"><h3 data-t="recv_by"></h3><p class="sub"></p><div class="bars" id="recvbars"></div></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><h3 data-t="inv_due"></h3><p class="sub"></p><div class="alerts" id="invalerts"></div></div>
+    <div class="card"><h3 data-t="doc_alerts"></h3><p class="sub"></p><div class="alerts" id="docalerts"></div></div>
+  </div>
+</section>
+<section class="view" id="v-invoices"><div class="card">
+  <div class="tools"><div class="chips" id="invchips"></div><span class="sp"></span><input class="search" id="invq" data-tp="search"><button class="btn pri" id="addinv">${D.icon('plus')}<span data-t="new_inv"></span></button></div>
+  <div class="tbl" id="invtbl"></div></div></section>
+<section class="view" id="v-cash"><div class="card">
+  <div class="tools"><div class="chips" id="txchips"></div><span class="sp"></span><span class="pill" id="txnet"></span><button class="btn pri" id="addtx">${D.icon('plus')}<span data-t="new_tx"></span></button></div>
+  <div class="tbl" id="txtbl"></div></div></section>
+<section class="view" id="v-docs"><div class="card">
+  <div class="tools"><div class="chips" id="docchips"></div><span class="sp"></span><input class="search" id="docq" data-tp="search"><button class="btn pri" id="adddoc">${D.icon('plus')}<span data-t="new_doc"></span></button></div>
+  <div class="tbl" id="doctbl"></div></div></section>`;
+D.applyLang();
+
+let INV = [], TX = [], DOCS = [], invF = 'open', txF = 'all', docF = 'action';
+async function load(){ [INV, TX, DOCS] = await Promise.all([D.DB.list('dp_invoices',{order:'created_at'}), D.DB.list('dp_transactions',{order:'tx_date'}), D.DB.list('dp_documents',{order:'expiry_date',asc:true})]); render(); }
+function monthKey(iso){ return String(iso).slice(0,7); }
+function render(){
+  const thisM = todayISO().slice(0,7);
+  const inM = TX.filter(x => x.direction==='in' && monthKey(x.tx_date)===thisM).reduce((s,x)=>s+ +x.amount,0);
+  const outM = TX.filter(x => x.direction==='out' && monthKey(x.tx_date)===thisM).reduce((s,x)=>s+ +x.amount,0);
+  const open = INV.filter(i => ['pending','partial'].includes(i.status));
+  const recv = open.reduce((s,i)=>s+invState(i).out,0);
+  const over = open.filter(i => invState(i).k==='overdue'); const overAmt = over.reduce((s,i)=>s+invState(i).out,0);
+  const toIssue = INV.filter(i => i.status==='to_issue'); const toIssueAmt = toIssue.reduce((s,i)=>s+ +i.amount,0);
+  const docAct = DOCS.filter(d => ['expired','critical'].includes(docStatus(d).k));
+  D.setCount('invoices', over.length + toIssue.length); D.setCount('docs', docAct.length);
+  $('#kpis').innerHTML = [
+    ['k_in', money(inM,{short:true}), '', 'acc'], ['k_out', money(outM,{short:true}), '', ''],
+    ['k_recv', money(recv,{short:true}), L(open.length+' open invoices', open.length+' فاتورة مفتوحة'), 'hot'],
+    ['k_over', money(overAmt,{short:true}), L(over.length+' invoices past due', over.length+' فاتورة تجاوزت الاستحقاق'), over.length?'alert':''],
+    ['k_issue', money(toIssueAmt,{short:true}), L(toIssue.length+' ready to bill', toIssue.length+' جاهزة للفوترة'), ''],
+    ['k_docs', docAct.length, L('expired or expiring within 30 days','منتهية أو تنتهي خلال 30 يومًا'), docAct.length?'alert':'']
+  ].map(([l,v,s,c]) => `<div class="kpi ${c}"><span class="l">${esc(t(l))}</span><span class="v num">${v}</span><span class="s">${esc(s)}</span></div>`).join('');
+  // 6-month columns
+  const months = []; const now = new Date(); for (let i=5;i>=0;i--){ const d = new Date(now.getFullYear(), now.getMonth()-i, 1); months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
+  const agg = months.map(m => ({m, i:TX.filter(x=>x.direction==='in'&&monthKey(x.tx_date)===m).reduce((s,x)=>s+ +x.amount,0), o:TX.filter(x=>x.direction==='out'&&monthKey(x.tx_date)===m).reduce((s,x)=>s+ +x.amount,0)}));
+  const mx = Math.max(1, ...agg.map(a => Math.max(a.i,a.o)));
+  const tin = agg.reduce((s,a)=>s+a.i,0), tout = agg.reduce((s,a)=>s+a.o,0);
+  $('#cashsub').textContent = t('balance') + ': ' + money(tin-tout,{short:true});
+  $('#cols').innerHTML = agg.map(a => `<div class="c"><div class="pair"><div class="b in" style="height:${a.i/mx*100}%" title="${money(a.i)}"></div><div class="b out" style="height:${a.o/mx*100}%" title="${money(a.o)}"></div></div><small>${new Date(a.m+'-01T00:00:00').toLocaleDateString(D.LANG()==='ar'?'ar-SA-u-ca-gregory':'en-GB',{month:'short'})}</small></div>`).join('');
+  // receivables by client
+  const by = {}; open.forEach(i => by[i.client_name] = (by[i.client_name]||0) + invState(i).out);
+  const arr = Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,6); const bm = Math.max(1, ...arr.map(a=>a[1]));
+  $('#recvbars').innerHTML = arr.length ? arr.map(([n,v]) => `<div class="br"><span>${esc(n)}</span><div class="track"><div class="fill" style="width:${v/bm*100}%"></div></div><span class="v">${money(v,{short:true,noCur:true})}</span></div>`).join('') : `<div class="empty">${esc(t('no_alerts'))}</div>`;
+  // alerts
+  const ia = [...over.map(i => ({c:'bad', b:i.client_name+' · '+money(invState(i).out,{short:true}), m:(i.invoice_no||'')+' · '+t('i_overdue')+' '+relDays(i.due_date), tag:t('i_overdue')})),
+    ...toIssue.map(i => ({c:'info', b:i.client_name+' · '+money(i.amount,{short:true}), m:(i.project||'')+(i.notes?' · '+i.notes:''), tag:t('i_to_issue')})),
+    ...open.filter(i => invState(i).k!=='overdue' && i.due_date && daysUntil(i.due_date)<=7).map(i => ({c:'warn', b:i.client_name+' · '+money(invState(i).out,{short:true}), m:t('c_due')+' '+relDays(i.due_date), tag:t('i_pending')}))];
+  $('#invalerts').innerHTML = ia.length ? ia.map(a => `<div class="al ${a.c}"><span class="tag">${esc(a.tag)}</span><div><b>${esc(a.b)}</b><div class="m">${esc(a.m)}</div></div><span></span></div>`).join('') : `<div class="empty">${esc(t('no_alerts'))}</div>`;
+  const da = DOCS.filter(d => ['expired','critical','soon'].includes(docStatus(d).k));
+  $('#docalerts').innerHTML = da.length ? da.map(d => { const s = docStatus(d); return `<div class="al ${s.k==='soon'?'warn':'bad'}"><span class="tag">${esc(t('ds_'+s.k))}</span><div><b>${esc(d.name)}</b><div class="m">${esc(fmtDate(d.expiry_date))} · ${esc(relDays(d.expiry_date))}${d.responsible?' · '+esc(d.responsible):''}</div></div><span></span></div>`; }).join('') : `<div class="empty">${esc(t('no_alerts'))}</div>`;
+  renderInv(); renderTx(); renderDocs();
+}
+function renderInv(){
+  const q = ($('#invq').value||'').toLowerCase();
+  const counts = k => INV.filter(i => k==='all' || (k==='open' ? ['pending','partial'].includes(i.status) : invState(i).k===k)).length;
+  D.chips($('#invchips'), ['open','overdue','to_issue','paid','all'].map(v => ({v, l: v==='open'?L('Open','مفتوحة'):v==='all'?t('all'):t('i_'+v), c:counts(v)})), invF, v => { invF = v; renderInv(); });
+  const rows = INV.filter(i => (invF==='all' || (invF==='open' ? ['pending','partial'].includes(i.status) : invState(i).k===invF)) && (!q || (i.client_name+' '+(i.project||'')+' '+(i.invoice_no||'')).toLowerCase().includes(q)))
+    .sort((a,b) => (a.due_date||'9') > (b.due_date||'9') ? 1 : -1);
+  D.table($('#invtbl'), { rows, onRow: editInv, empty:[L('No invoices in this view','لا توجد فواتير في هذا العرض')],
+    cols:[ {h:t('c_inv'), f:i => `<span class="t">${esc(i.invoice_no||'—')}</span><div class="m">${esc(fmtDate(i.issue_date))}</div>`},
+      {h:t('c_client'), f:i => `<span class="t">${esc(i.client_name)}</span><div class="m">${esc(i.project||'')}</div>`},
+      {h:t('c_amount'), r:1, f:i => money(i.amount)}, {h:t('c_out'), r:1, f:i => `<b>${money(invState(i).out)}</b>`},
+      {h:t('c_due'), f:i => i.due_date ? `${esc(fmtDate(i.due_date))}<div class="m">${esc(relDays(i.due_date))}</div>` : '—'},
+      {h:t('c_status'), f:i => { const s = invState(i); return `<span class="pill ${s.cls}">${esc(t('i_'+s.k))}</span>${i.last_reminder?`<div class="m">${esc(t('reminded'))}: ${esc(fmtDate(i.last_reminder))}</div>`:''}`; }},
+      {h:'', r:1, f:i => ['pending','partial'].includes(i.status) ? `<button class="btn sm" data-pay="${i.id}">${esc(t('pay'))}</button>` : ''} ]});
+  $$('[data-pay]', $('#invtbl')).forEach(b => b.onclick = e => { e.stopPropagation(); payInv(INV.find(i => i.id === +b.dataset.pay)); });
+}
+const invFields = () => [
+  {k:'client_name',label:t('f_client'),req:1},{k:'project',label:t('f_project')},{k:'invoice_no',label:t('f_invoice_no')},
+  {k:'status',label:t('f_status'),type:'select',options:D.opts(D.INV_STATUS,'i_')},{k:'amount',label:t('f_amount'),type:'number',req:1},{k:'paid_amount',label:t('f_paid'),type:'number'},
+  {k:'issue_date',label:t('f_issue'),type:'date'},{k:'due_date',label:t('f_due'),type:'date'},{k:'last_reminder',label:t('reminded'),type:'date'},{k:'notes',label:t('f_notes'),type:'textarea',full:1}];
+function editInv(i){ D.form({ title: i ? (i.invoice_no || i.client_name) : t('new_inv'), fields: invFields(), values: i || {status:'pending', paid_amount:0, issue_date:todayISO()},
+  onSave: async v => { v.paid_amount = v.paid_amount || 0; if (i) await D.DB.update('dp_invoices', i.id, v); else await D.DB.insert('dp_invoices', v); await load(); },
+  onDelete: i ? async () => { await D.DB.remove('dp_invoices', i.id); await load(); } : null }); }
+function payInv(i){ const outAmt = invState(i).out;
+  D.form({ title: t('pay') + ' · ' + i.client_name, fields:[{k:'amount',label:t('pay_amount'),type:'number',req:1},{k:'tx_date',label:t('pay_date'),type:'date',req:1}], values:{amount:outAmt, tx_date:todayISO()},
+    extra:`<div class="kv"><dt>${esc(t('c_inv'))}</dt><dd>${esc(i.invoice_no||'—')} · ${esc(i.project||'')}</dd><dt>${esc(t('c_out'))}</dt><dd class="num">${money(outAmt)}</dd></div>`,
+    onSave: async v => { const paid = Number(i.paid_amount||0) + Number(v.amount);
+      await D.DB.insert('dp_transactions', {tx_date:v.tx_date, direction:'in', category:L('Client payment','دفعة عميل'), amount:v.amount, description:i.client_name+' · '+(i.invoice_no||i.project||''), invoice_id:i.id});
+      await D.DB.update('dp_invoices', i.id, {paid_amount:paid, status: paid >= Number(i.amount) ? 'paid' : 'partial'}); await load(); } }); }
+$('#addinv').onclick = () => editInv(null); $('#invq').oninput = renderInv;
+
+function renderTx(){
+  D.chips($('#txchips'), [{v:'all',l:t('all')},{v:'in',l:t('in')},{v:'out',l:t('out')}], txF, v => { txF = v; renderTx(); });
+  const rows = TX.filter(x => txF==='all' || x.direction===txF);
+  const net = rows.reduce((s,x)=>s+(x.direction==='in'?1:-1)*x.amount,0);
+  $('#txnet').innerHTML = esc(t('net')) + ': <b class="num">' + money(net) + '</b>'; $('#txnet').className = 'pill ' + (net>=0?'good':'bad');
+  D.table($('#txtbl'), { rows, onRow: editTx, cols:[ {h:t('c_date'), f:x => esc(fmtDate(x.tx_date))}, {h:t('c_desc'), f:x => `<span class="t">${esc(x.description||'—')}</span>`}, {h:t('c_cat'), f:x => esc(x.category||'—')},
+    {h:t('c_in'), r:1, f:x => x.direction==='in' ? `<b style="color:var(--good)">${money(x.amount)}</b>` : ''}, {h:t('c_outc'), r:1, f:x => x.direction==='out' ? money(x.amount) : ''} ]});
+}
+function editTx(x){ D.form({ title: x ? (x.description || t('new_tx')) : t('new_tx'),
+  fields:[{k:'direction',label:t('f_dir'),type:'select',options:[{v:'in',l:t('in')},{v:'out',l:t('out')}]},{k:'tx_date',label:t('f_date'),type:'date',req:1},{k:'amount',label:t('f_amount'),type:'number',req:1},
+    {k:'category',label:t('f_cat'),ph:L('Payroll, rent, subcontractor, client payment…','رواتب، إيجار، مقاول باطن، دفعة عميل…')},{k:'description',label:t('f_desc'),full:1},
+    {k:'invoice_id',label:t('f_inv'),type:'select',blank:1,options:INV.map(i => ({v:i.id,l:(i.invoice_no||'—')+' · '+i.client_name})),full:1}],
+  values: x || {direction:'in', tx_date:todayISO()},
+  onSave: async v => { v.invoice_id = v.invoice_id ? Number(v.invoice_id) : null; if (x) await D.DB.update('dp_transactions', x.id, v); else await D.DB.insert('dp_transactions', v); await load(); },
+  onDelete: x ? async () => { await D.DB.remove('dp_transactions', x.id); await load(); } : null }); }
+$('#addtx').onclick = () => editTx(null);
+
+function renderDocs(){
+  const q = ($('#docq').value||'').toLowerCase();
+  const cnt = k => DOCS.filter(d => k==='all' || (k==='action' ? ['expired','critical'].includes(docStatus(d).k) : docStatus(d).k===k)).length;
+  D.chips($('#docchips'), ['action','soon','valid','all'].map(v => ({v, l: v==='action'?L('Needs action','تحتاج إجراء'):v==='all'?t('all'):t('ds_'+v), c:cnt(v)})), docF, v => { docF = v; renderDocs(); });
+  const rows = DOCS.filter(d => (docF==='all' || (docF==='action' ? ['expired','critical'].includes(docStatus(d).k) : docStatus(d).k===docF)) && (!q || (d.name+' '+(d.ref_no||'')+' '+(d.issuer||'')).toLowerCase().includes(q)));
+  D.table($('#doctbl'), { rows, onRow: editDoc, empty:[L('No documents in this view','لا توجد وثائق في هذا العرض')],
+    cols:[ {h:t('c_doc'), f:d => `<span class="t">${esc(d.name)}</span><div class="m">${esc(t('d_'+d.doc_type))}${d.ref_no?' · '+esc(d.ref_no):''}</div>`}, {h:t('f_issuer'), f:d => esc(d.issuer||'—')},
+      {h:t('c_exp'), f:d => esc(fmtDate(d.expiry_date))}, {h:t('c_left'), r:1, f:d => { const s = docStatus(d); return s.d==null?'—':`<b class="num" style="color:${s.cls==='bad'?'var(--bad)':s.cls==='warn'?'var(--warn)':'inherit'}">${s.d}</b>`; }},
+      {h:t('c_status'), f:d => { const s = docStatus(d); return `<span class="pill ${s.cls}">${esc(t('ds_'+s.k))}</span>`; }}, {h:t('c_resp'), f:d => esc(d.responsible||'—')} ]});
+}
+function editDoc(d){ D.form({ title: d ? d.name : t('new_doc'),
+  fields:[{k:'name',label:t('f_name'),req:1,full:1},{k:'doc_type',label:t('f_type'),type:'select',options:D.opts(D.DOC_TYPES,'d_')},{k:'issuer',label:t('f_issuer')},{k:'ref_no',label:t('f_ref')},{k:'responsible',label:t('f_resp')},
+    {k:'issue_date',label:t('f_issue'),type:'date'},{k:'expiry_date',label:t('f_exp'),type:'date',req:1},{k:'notes',label:t('f_notes'),type:'textarea',full:1}],
+  values: d || {doc_type:'license'},
+  onSave: async v => { if (d) await D.DB.update('dp_documents', d.id, v); else await D.DB.insert('dp_documents', v); await load(); },
+  onDelete: d ? async () => { await D.DB.remove('dp_documents', d.id); await load(); } : null }); }
+$('#adddoc').onclick = () => editDoc(null); $('#docq').oninput = renderDocs;
+
+D.onLang = render;
+D.views(NAV);
+await load();
+D.DB.subscribe(['dp_invoices','dp_transactions','dp_documents'], load);
+})();
+</script>
+</body>
+</html>
